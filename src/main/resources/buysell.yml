@@ -1,0 +1,81 @@
+# Buy/Sell Item GUI configuration
+gui:
+  # <item> is replaced with the item's display name
+  title: "<gold>Buy / Sell — <item></gold>"
+  rows: 3
+
+  # Slot indices (0-indexed) for each GUI element within a 3-row (27-slot) chest
+  slots:
+    item-display: 13
+    buy-one: 10
+    buy-stack: 11
+    sell-one: 15
+    sell-all: 16
+
+  # Filler for empty slots
+  filler:
+    enabled: true
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+
+  # Back button (returns to the category GUI)
+  back-button:
+    slot: 22
+    material: ARROW
+    name: "<gray>← Back"
+    lore:
+      - "<dark_gray>Return to the category."
+
+# Button display configurations
+# <price>, <amount>, and <item> are replaced dynamically
+buttons:
+  buy-one:
+    material: LIME_STAINED_GLASS_PANE
+    name: "<green>Buy 1"
+    lore:
+      - "<gray>Left-click to buy <white>1x <item></white>."
+      - "<gray>Price: <gold><price></gold>"
+      - ""
+      - "<dark_gray>Bind: <key:key.attack>"
+
+  buy-stack:
+    material: GREEN_STAINED_GLASS_PANE
+    name: "<green>Buy Stack <gray>(64)"
+    lore:
+      - "<gray>Shift+Left-click to buy <white>64x <item></white>."
+      - "<gray>Price: <gold><price></gold>"
+      - ""
+      - "<dark_gray>Bind: <key:key.sprint> + <key:key.attack>"
+
+  sell-one:
+    material: RED_STAINED_GLASS_PANE
+    name: "<red>Sell 1"
+    lore:
+      - "<gray>Right-click to sell <white>1x <item></white>."
+      - "<gray>Price: <gold><price></gold>"
+      - ""
+      - "<dark_gray>Bind: <key:key.use>"
+
+  sell-all:
+    material: DARK_RED_STAINED_GLASS_PANE
+    name: "<dark_red>Sell All"
+    lore:
+      - "<gray>Shift+Right-click to sell all <item>."
+      - "<gray>in your inventory."
+      - ""
+      - "<dark_gray>Bind: <key:key.sprint> + <key:key.use>"
+
+  sell-stack:
+    material: ORANGE_STAINED_GLASS_PANE
+    name: "<gold>Sell Stack"
+    lore:
+      - "<gray>Press Drop to sell one stack of <item>."
+      - ""
+      - "<dark_gray>Bind: <key:key.drop>"
+
+  disabled:
+    material: BARRIER
+    name: "<dark_gray>Disabled"
+    lore:
+      - "<red>This operation is not available"
+      - "<red>for this item."

@@ -1,0 +1,37 @@
+title: "<aqua>Tools"
+
+items:
+  - material: WOODEN_PICKAXE
+    name: "<yellow>Wooden Pickaxe"
+    buy-price: 20.0
+    sell-price: 5.0
+
+  - material: STONE_PICKAXE
+    name: "<gray>Stone Pickaxe"
+    buy-price: 40.0
+    sell-price: 10.0
+
+  - material: IRON_PICKAXE
+    name: "<white>Iron Pickaxe"
+    buy-price: 100.0
+    sell-price: 25.0
+
+  - material: DIAMOND_PICKAXE
+    name: "<aqua>Diamond Pickaxe"
+    buy-price: 500.0
+    sell-price: 150.0
+
+  - material: IRON_AXE
+    name: "<white>Iron Axe"
+    buy-price: 80.0
+    sell-price: 20.0
+
+  - material: IRON_SHOVEL
+    name: "<white>Iron Shovel"
+    buy-price: 60.0
+    sell-price: 15.0
+
+  - material: IRON_SWORD
+    name: "<white>Iron Sword"
+    buy-price: 90.0
+    sell-price: 22.0

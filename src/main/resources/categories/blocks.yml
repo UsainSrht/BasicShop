@@ -1,0 +1,56 @@
+# Example category: Blocks
+# Place this file in the categories/ folder as blocks.yml
+# Items with no buy-price (or buy-price: -1) cannot be bought.
+# Items with no sell-price (or sell-price: -1) cannot be sold.
+
+title: "<green>Blocks"
+
+items:
+  - material: GRASS_BLOCK
+    name: "<green>Grass Block"
+    lore:
+      - "<gray>A simple grass block."
+    buy-price: 5.0
+    sell-price: 2.0
+
+  - material: STONE
+    name: "<gray>Stone"
+    lore:
+      - "<gray>Basic building material."
+    buy-price: 2.0
+    sell-price: 0.5
+
+  - material: OAK_LOG
+    name: "<yellow>Oak Log"
+    lore:
+      - "<gray>Wood from an oak tree."
+    buy-price: 8.0
+    sell-price: 3.0
+
+  - material: SAND
+    name: "<yellow>Sand"
+    lore:
+      - "<gray>Found near water and in deserts."
+    buy-price: 3.0
+    sell-price: 1.0
+
+  - material: GRAVEL
+    name: "<gray>Gravel"
+    lore:
+      - "<gray>Falls with gravity."
+    buy-price: 3.0
+    sell-price: 1.0
+
+  - material: COBBLESTONE
+    name: "<gray>Cobblestone"
+    lore:
+      - "<gray>The most common building block."
+    buy-price: 1.0
+    sell-price: 0.25
+
+  - material: OBSIDIAN
+    name: "<dark_purple>Obsidian"
+    lore:
+      - "<gray>Extremely hard."
+    buy-price: 50.0
+    # No sell-price — selling obsidian is disabled

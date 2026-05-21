@@ -1,0 +1,37 @@
+# BasicShop Configuration
+# All display strings support MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
+
+# Global toggles
+global:
+  # Set to false to completely disable buying from the shop
+  buying-enabled: true
+  # Set to false to completely disable selling to the shop
+  selling-enabled: true
+
+# Player-facing messages (MiniMessage format)
+messages:
+  prefix: "<dark_gray>[<gold>BasicShop</gold>]</dark_gray> "
+
+  no-permission: "<red>You do not have permission to do that."
+  player-only: "<red>This command can only be used by players."
+  reload-success: "<green>Configuration reloaded successfully."
+
+  shop-buy-disabled: "<red>Buying is currently disabled."
+  shop-sell-disabled: "<red>Selling is currently disabled."
+
+  item-buy-disabled: "<red>This item cannot be bought."
+  item-sell-disabled: "<red>This item cannot be sold."
+
+  buy-success: "<green>You bought <white><amount>x <item></white> for <gold><price></gold>."
+  sell-success: "<green>You sold <white><amount>x <item></white> for <gold><price></gold>."
+
+  insufficient-funds: "<red>You do not have enough money. Required: <gold><price></gold>."
+  not-enough-items: "<red>You do not have enough of that item to sell."
+
+  no-sellable-items: "<yellow>You have no sellable items in your inventory."
+  quicksell-hand-empty: "<yellow>You are not holding any item."
+  quicksell-inventory-success: "<green>Sold all sellable items for a total of <gold><price></gold>."
+
+  vault-unavailable: "<red>Economy provider is unavailable. Please contact an administrator."
+
+  unknown-item: "<red>That item is not configured in the shop."

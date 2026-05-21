@@ -1,0 +1,52 @@
+name: BasicShop
+version: ${project.version}
+main: com.basicshop.BasicShop
+description: A simple, lightweight, and modern Minecraft shop plugin.
+api-version: "26.1"
+authors:
+  - BasicShop Team
+
+soft-depends:
+  - Vault
+
+commands:
+  shop:
+    description: Main shop command
+    usage: /shop [help|reload|quicksell]
+    aliases:
+      - bs
+
+permissions:
+  basicshop.use:
+    description: Allows the player to open the shop
+    default: true
+
+  basicshop.buy:
+    description: Allows the player to buy items from the shop
+    default: true
+
+  basicshop.sell:
+    description: Allows the player to sell items to the shop
+    default: true
+
+  basicshop.quicksell:
+    description: Allows the player to use the QuickSell GUI
+    default: true
+
+  basicshop.quicksell.hand:
+    description: Allows the player to use /shop quicksell hand
+    default: true
+
+  basicshop.quicksell.inventory:
+    description: Allows the player to use /shop quicksell inventory
+    default: true
+
+  basicshop.admin.reload:
+    description: Allows the player to reload the plugin configuration
+    default: op
+
+  basicshop.admin:
+    description: Grants all BasicShop admin permissions
+    default: op
+    children:
+      basicshop.admin.reload: true

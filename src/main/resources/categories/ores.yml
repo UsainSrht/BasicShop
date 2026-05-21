@@ -1,0 +1,42 @@
+title: "<aqua>Ores & Gems"
+
+items:
+  - material: COAL
+    name: "<dark_gray>Coal"
+    buy-price: 5.0
+    sell-price: 2.0
+
+  - material: IRON_INGOT
+    name: "<white>Iron Ingot"
+    buy-price: 15.0
+    sell-price: 6.0
+
+  - material: GOLD_INGOT
+    name: "<gold>Gold Ingot"
+    buy-price: 25.0
+    sell-price: 10.0
+
+  - material: DIAMOND
+    name: "<aqua>Diamond"
+    buy-price: 150.0
+    sell-price: 60.0
+
+  - material: EMERALD
+    name: "<green>Emerald"
+    buy-price: 100.0
+    sell-price: 40.0
+
+  - material: NETHERITE_INGOT
+    name: "<dark_gray>Netherite Ingot"
+    buy-price: 800.0
+    sell-price: 300.0
+
+  - material: LAPIS_LAZULI
+    name: "<blue>Lapis Lazuli"
+    buy-price: 10.0
+    sell-price: 4.0
+
+  - material: REDSTONE
+    name: "<red>Redstone"
+    buy-price: 8.0
+    sell-price: 3.0

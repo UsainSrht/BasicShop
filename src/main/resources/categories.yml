@@ -1,0 +1,60 @@
+# Main Categories GUI configuration
+gui:
+  title: "<gold><bold>Shop</bold></gold>"
+  rows: 6
+
+  # Slot (0-indexed) in the Categories GUI reserved for the QuickSell button
+  quicksell-slot: 49
+
+  # Optional: filler item for empty slots (set material to AIR to disable)
+  filler:
+    enabled: true
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+
+  # Navigation / decorative buttons
+  quicksell-button:
+    material: HOPPER
+    name: "<yellow><bold>Quick Sell</bold></yellow>"
+    lore:
+      - "<gray>Click with an item to quickly sell it."
+      - "<gray>Click with an empty hand to open"
+      - "<gray>the Quick Sell inventory browser."
+
+# Categories to display in the GUI
+# Each entry maps to a file in the categories/ folder (by id)
+categories:
+  - id: "blocks"
+    slot: 10
+    material: GRASS_BLOCK
+    name: "<green>Blocks"
+    lore:
+      - "<gray>Building blocks and materials."
+
+  - id: "tools"
+    slot: 11
+    material: IRON_PICKAXE
+    name: "<aqua>Tools"
+    lore:
+      - "<gray>Axes, pickaxes, shovels, and more."
+
+  - id: "food"
+    slot: 12
+    material: COOKED_BEEF
+    name: "<yellow>Food"
+    lore:
+      - "<gray>Consumable items and ingredients."
+
+  - id: "ores"
+    slot: 13
+    material: DIAMOND_ORE
+    name: "<aqua>Ores & Gems"
+    lore:
+      - "<gray>Ores, ingots, and precious gems."
+
+  - id: "misc"
+    slot: 14
+    material: CHEST
+    name: "<white>Miscellaneous"
+    lore:
+      - "<gray>Everything else."
