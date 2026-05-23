@@ -1,0 +1,49 @@
+# QuickSell GUI configuration
+# All display strings support MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
+gui:
+  title: "<gold>Quick Sell \u2014 Inventory"
+  rows: 6
+
+  close-button:
+    slot: 45
+    material: BARRIER
+    name: "<gray>\u2717 Close"
+
+  sell-all-button:
+    slot: 49
+    material: EMERALD
+    name: "<green><bold>Sell All</bold></green>"
+    lore:
+      - "<gray>Sells every sellable item"
+      - "<gray>in your inventory at once."
+      - ""
+      - "<yellow>Click to sell all."
+
+  # Filler for empty slots in the bottom navigation row
+  filler:
+    enabled: true
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+    hide-tooltip: true
+
+  # Shown in the centre of the items area when no sellable items are found
+  empty-slot: 22
+  empty-item:
+    material: BARRIER
+    name: "<red>No sellable items found."
+    lore:
+      - "<gray>You have no items in your inventory"
+      - "<gray>that the shop will buy."
+
+  # Display name for each item slot.
+  # Use <item> as the item's translatable in-game name (localised per client).
+  item-name: "<item>"
+
+  # Lore template for each item slot.
+  # Placeholders: <amount>, <price> (per-unit sell price), <total> (price \u00d7 amount)
+  item-lore:
+    - "<gray>In stack: <white><amount>"
+    - "<gray>Sell price: <gold><price> <gray>each"
+    - "<gray>Total: <gold><total>"
+    - ""
+    - "<yellow>Click to sell this stack."

@@ -21,20 +21,23 @@ public final class GuiListener implements Listener {
         InventoryHolder holder = event.getInventory().getHolder();
         if (!(holder instanceof AbstractShopGui gui)) return;
 
-        // Cancel the event first to prevent item movement in all shop GUIs
-        event.setCancelled(true);
-
-        // Guard: only handle clicks that land inside the top inventory
-        // (rawSlot < inventory size means it's the shop GUI, not the player inv)
+        // Allow clicks in the player's own inventory area (bottom half)
         if (event.getRawSlot() >= event.getInventory().getSize()) return;
 
+        // Cancel item movement only within the shop GUI area
+        event.setCancelled(true);
         gui.handleClick(event);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInventoryDrag(InventoryDragEvent event) {
         InventoryHolder holder = event.getInventory().getHolder();
-        if (holder instanceof AbstractShopGui) {
+        if (!(holder instanceof AbstractShopGui)) return;
+
+        // Cancel drag only if it touches the shop inventory area
+        int shopSize = event.getInventory().getSize();
+        boolean touchesShop = event.getRawSlots().stream().anyMatch(s -> s < shopSize);
+        if (touchesShop) {
             event.setCancelled(true);
         }
     }

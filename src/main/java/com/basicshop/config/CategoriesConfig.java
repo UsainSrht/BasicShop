@@ -27,6 +27,7 @@ public final class CategoriesConfig {
     private final boolean fillerEnabled;
     private final Material fillerMaterial;
     private final String fillerName;
+    private final boolean fillerHideTooltip;
     private final Material quicksellMaterial;
     private final String quicksellName;
     private final List<String> quicksellLore;
@@ -39,13 +40,15 @@ public final class CategoriesConfig {
 
         ConfigurationSection filler = cfg.getConfigurationSection("gui.filler");
         if (filler != null) {
-            this.fillerEnabled  = filler.getBoolean("enabled", true);
-            this.fillerMaterial = parseMaterial(filler.getString("material"), Material.GRAY_STAINED_GLASS_PANE);
-            this.fillerName     = filler.getString("name", " ");
+            this.fillerEnabled     = filler.getBoolean("enabled", true);
+            this.fillerMaterial    = parseMaterial(filler.getString("material"), Material.GRAY_STAINED_GLASS_PANE);
+            this.fillerName        = filler.getString("name", " ");
+            this.fillerHideTooltip = filler.getBoolean("hide-tooltip", true);
         } else {
-            this.fillerEnabled  = false;
-            this.fillerMaterial = Material.GRAY_STAINED_GLASS_PANE;
-            this.fillerName     = " ";
+            this.fillerEnabled     = false;
+            this.fillerMaterial    = Material.GRAY_STAINED_GLASS_PANE;
+            this.fillerName        = " ";
+            this.fillerHideTooltip = true;
         }
 
         ConfigurationSection qs = cfg.getConfigurationSection("gui.quicksell-button");
@@ -60,17 +63,17 @@ public final class CategoriesConfig {
         }
 
         List<CategoryEntry> cats = new ArrayList<>();
-        List<java.util.Map<?, ?>> rawList = cfg.getMapList("categories");
-        for (java.util.Map<?, ?> raw : rawList) {
-            String id = (String) raw.get("id");
-            int slot  = raw.get("slot") instanceof Number n ? n.intValue() : 0;
-            Material mat = parseMaterial((String) raw.get("material"), Material.CHEST);
-            String name  = raw.containsKey("name") ? (String) raw.get("name") : id;
-
-            @SuppressWarnings("unchecked")
-            List<String> lore = raw.containsKey("lore") ? (List<String>) raw.get("lore") : Collections.emptyList();
-
-            cats.add(new CategoryEntry(id, slot, mat, name, lore));
+        ConfigurationSection catsSec = cfg.getConfigurationSection("categories");
+        if (catsSec != null) {
+            for (String id : catsSec.getKeys(false)) {
+                ConfigurationSection sub = catsSec.getConfigurationSection(id);
+                if (sub == null) continue;
+                int slot         = sub.getInt("slot", 0);
+                Material mat     = parseMaterial(sub.getString("material"), Material.CHEST);
+                String name      = sub.getString("name", id);
+                List<String> lore = sub.getStringList("lore");
+                cats.add(new CategoryEntry(id, slot, mat, name, lore));
+            }
         }
         this.categories = Collections.unmodifiableList(cats);
     }
@@ -87,10 +90,11 @@ public final class CategoriesConfig {
     public String getGuiTitle() { return guiTitle; }
     public int getGuiRows()     { return guiRows; }
     public int getQuicksellSlot() { return quicksellSlot; }
-    public boolean isFillerEnabled() { return fillerEnabled; }
-    public Material getFillerMaterial() { return fillerMaterial; }
-    public String getFillerName()     { return fillerName; }
-    public Material getQuicksellMaterial() { return quicksellMaterial; }
+    public boolean isFillerEnabled()        { return fillerEnabled; }
+    public Material getFillerMaterial()      { return fillerMaterial; }
+    public String getFillerName()            { return fillerName; }
+    public boolean isFillerHideTooltip()     { return fillerHideTooltip; }
+    public Material getQuicksellMaterial()   { return quicksellMaterial; }
     public String getQuicksellName()       { return quicksellName; }
     public List<String> getQuicksellLore() { return quicksellLore; }
     public List<CategoryEntry> getCategories() { return categories; }

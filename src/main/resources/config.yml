@@ -35,3 +35,64 @@ messages:
   vault-unavailable: "<red>Economy provider is unavailable. Please contact an administrator."
 
   unknown-item: "<red>That item is not configured in the shop."
+
+# Category GUI — navigation buttons and bottom-row filler
+category-gui:
+  back-button:
+    material: BARRIER
+    name: "<gray>\u2717 Back to Categories"
+    lore: []
+  prev-button:
+    material: ARROW
+    name: "<gray>\u2190 Previous Page"
+    lore: []
+  next-button:
+    material: ARROW
+    name: "<gray>Next Page \u2192"
+    lore: []
+  filler:
+    enabled: true
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+    hide-tooltip: true
+
+# Per-click actions in the category GUI.
+# action: buy | sell
+# amount: a positive integer, or 'all' (sell-only, sells the entire inventory stack)
+actions:
+  left-click:
+    action: sell
+    amount: 1
+  shift-left-click:
+    action: sell
+    amount: 64
+  right-click:
+    action: buy
+    amount: 1
+  shift-right-click:
+    action: buy
+    amount: 64
+  drop-key:
+    action: sell
+    amount: all
+
+# Item display settings — applies to all items in every category GUI
+item-display:
+  # Display name for shop items.
+  # Use <item> as the item's translatable in-game name component (localized per client).
+  # Use "" (empty string) to fall back to Minecraft's default item tooltip name.
+  name: "" #"<green>\u25A0 <item>"
+  # Lore template. Placeholders:
+  #   <price_buy>  — replaced with the buy price. Lines containing this are hidden when buying is disabled.
+  #   <price_sell> — replaced with the sell price. Lines containing this are hidden when selling is disabled.
+  #   <if_buy>     — marks a line as buy-conditional (hidden when buying is disabled); tag is stripped from output.
+  #   <if_sell>    — marks a line as sell-conditional (hidden when selling is disabled); tag is stripped from output.
+  lore:
+    - "<gray>Buy: <gold><price_buy>"
+    - "<gray>Sell: <gold><price_sell>"
+    - ""
+    - "<if_buy><dark_gray>Left click <white>Buy 1"
+    - "<if_buy><dark_gray>Shift left click <white>Buy 64"
+    - "<if_sell><dark_gray>Right click <white>Sell 1"
+    - "<if_sell><dark_gray>Shift right click <white>Sell 64"
+    - "<if_sell><dark_gray><key:key.drop> <white>Sell All"

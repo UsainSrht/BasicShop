@@ -60,7 +60,7 @@ public final class CategoriesGui extends AbstractShopGui {
 
         // Fill empty slots with filler
         if (cfg.isFillerEnabled()) {
-            fillEmpty(cfg.getFillerMaterial(), cfg.getFillerName());
+            fillEmpty(cfg.getFillerMaterial(), cfg.getFillerName(), cfg.isFillerHideTooltip());
         }
     }
 
@@ -104,7 +104,7 @@ public final class CategoriesGui extends AbstractShopGui {
                     if (txResult == com.basicshop.api.model.TransactionResult.SUCCESS) {
                         event.setCursor(new ItemStack(org.bukkit.Material.AIR));
                         sendMessage(player, "sell-success",
-                                cursor.getAmount(), shopItemOpt.get().getDisplayName(),
+                                cursor.getAmount(), "<lang:" + shopItemOpt.get().getMaterial().translationKey() + ">",
                                 shopItemOpt.get().getSellPrice().orElse(0) * cursor.getAmount());
                     } else {
                         sendTransactionMessage(player, txResult);

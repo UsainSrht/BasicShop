@@ -3,6 +3,7 @@ package com.basicshop.config;
 import com.basicshop.api.model.ShopCategory;
 import com.basicshop.api.model.ShopItem;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -28,7 +29,7 @@ public final class ConfigManager {
 
     private MainConfig       mainConfig;
     private CategoriesConfig categoriesConfig;
-    private BuySellGuiConfig buySellGuiConfig;
+    private QuickSellConfig  quickSellConfig;
     private List<ShopCategory> categories;
 
     public ConfigManager(Plugin plugin) {
@@ -43,7 +44,7 @@ public final class ConfigManager {
         // Save default resource files from jar
         saveDefault("config.yml");
         saveDefault("categories.yml");
-        saveDefault("buysell.yml");
+        saveDefault("quicksell.yml");
         saveDefaultCategories();
 
         plugin.reloadConfig();
@@ -54,8 +55,8 @@ public final class ConfigManager {
         FileConfiguration catsCfg = loadYml("categories.yml");
         this.categoriesConfig = new CategoriesConfig(catsCfg);
 
-        FileConfiguration bsCfg = loadYml("buysell.yml");
-        this.buySellGuiConfig = new BuySellGuiConfig(bsCfg);
+        FileConfiguration quickSellCfg = loadYml("quicksell.yml");
+        this.quickSellConfig = new QuickSellConfig(quickSellCfg);
 
         this.categories = loadCategories();
 
@@ -143,30 +144,24 @@ public final class ConfigManager {
 
     private List<ShopItem> parseItems(String categoryId, YamlConfiguration cfg) {
         List<ShopItem> items = new ArrayList<>();
-        List<Map<?, ?>> rawList = cfg.getMapList("items");
+        ConfigurationSection section = cfg.getConfigurationSection("items");
+        if (section == null) return items;
 
-        for (Map<?, ?> raw : rawList) {
-            String matName = (String) raw.get("material");
-            if (matName == null) continue;
+        for (String key : section.getKeys(false)) {
+            ConfigurationSection sub = section.getConfigurationSection(key);
+            if (sub == null) continue;
 
-            Material mat;
-            try {
-                mat = Material.valueOf(matName.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Unknown material '" + matName + "' in category '" + categoryId + "', skipping.");
+            Material mat = Material.matchMaterial(key);
+            if (mat == null) {
+                plugin.getLogger().warning("Unknown material '" + key + "' in category '" + categoryId + "', skipping.");
                 continue;
             }
 
-            String id          = categoryId + ":" + matName.toLowerCase();
-            String displayName = raw.containsKey("name") ? (String) raw.get("name") : "<white>" + mat.name();
+            String id            = categoryId + ":" + key;
+            OptionalDouble buyPrice  = parsePrice(sub.get("buy"));
+            OptionalDouble sellPrice = parsePrice(sub.get("sell"));
 
-            @SuppressWarnings("unchecked")
-            List<String> lore = raw.containsKey("lore") ? (List<String>) raw.get("lore") : Collections.emptyList();
-
-            OptionalDouble buyPrice  = parsePrice(raw.get("buy-price"));
-            OptionalDouble sellPrice = parsePrice(raw.get("sell-price"));
-
-            items.add(new ShopItem(id, mat, displayName, lore, buyPrice, sellPrice));
+            items.add(new ShopItem(id, mat, buyPrice, sellPrice));
         }
 
         return items;
@@ -193,6 +188,6 @@ public final class ConfigManager {
 
     public MainConfig getMainConfig()             { return mainConfig; }
     public CategoriesConfig getCategoriesConfig() { return categoriesConfig; }
-    public BuySellGuiConfig getBuySellGuiConfig() { return buySellGuiConfig; }
+    public QuickSellConfig getQuickSellConfig()   { return quickSellConfig; }
     public List<ShopCategory> getCategories()     { return categories; }
 }

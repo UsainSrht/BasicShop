@@ -1,56 +1,168 @@
-# Example category: Blocks
-# Place this file in the categories/ folder as blocks.yml
-# Items with no buy-price (or buy-price: -1) cannot be bought.
-# Items with no sell-price (or sell-price: -1) cannot be sold.
+# Blocks category
+# Item keys are lowercase material names (as used in the /give command).
+# Omit 'buy' or 'sell' to disable that direction for an item.
 
 title: "<green>Blocks"
 
 items:
-  - material: GRASS_BLOCK
-    name: "<green>Grass Block"
-    lore:
-      - "<gray>A simple grass block."
-    buy-price: 5.0
-    sell-price: 2.0
-
-  - material: STONE
-    name: "<gray>Stone"
-    lore:
-      - "<gray>Basic building material."
-    buy-price: 2.0
-    sell-price: 0.5
-
-  - material: OAK_LOG
-    name: "<yellow>Oak Log"
-    lore:
-      - "<gray>Wood from an oak tree."
-    buy-price: 8.0
-    sell-price: 3.0
-
-  - material: SAND
-    name: "<yellow>Sand"
-    lore:
-      - "<gray>Found near water and in deserts."
-    buy-price: 3.0
-    sell-price: 1.0
-
-  - material: GRAVEL
-    name: "<gray>Gravel"
-    lore:
-      - "<gray>Falls with gravity."
-    buy-price: 3.0
-    sell-price: 1.0
-
-  - material: COBBLESTONE
-    name: "<gray>Cobblestone"
-    lore:
-      - "<gray>The most common building block."
-    buy-price: 1.0
-    sell-price: 0.25
-
-  - material: OBSIDIAN
-    name: "<dark_purple>Obsidian"
-    lore:
-      - "<gray>Extremely hard."
-    buy-price: 50.0
-    # No sell-price — selling obsidian is disabled
+  grass_block:
+    buy: 5.0
+    sell: 2.0
+  stone:
+    buy: 2.0
+    sell: 0.5
+  oak_log:
+    buy: 8.0
+    sell: 3.0
+  obsidian:
+    buy: 50.0
+  dirt:
+    buy: 2.0
+    sell: 0.5
+  coarse_dirt:
+    buy: 2.5
+    sell: 0.75
+  podzol:
+    buy: 5.0
+    sell: 1.5
+  rooted_dirt:
+    buy: 3.0
+    sell: 1.0
+  moss_block:
+    buy: 10.0
+    sell: 3.0
+  spruce_log:
+    buy: 8.0
+    sell: 3.0
+  birch_log:
+    buy: 8.0
+    sell: 3.0
+  jungle_log:
+    buy: 8.0
+    sell: 3.0
+  acacia_log:
+    buy: 8.0
+    sell: 3.0
+  dark_oak_log:
+    buy: 8.0
+    sell: 3.0
+  mangrove_log:
+    buy: 10.0
+    sell: 4.0
+  cherry_log:
+    buy: 10.0
+    sell: 4.0
+  bamboo_block:
+    buy: 10.0
+    sell: 4.0
+  glass:
+    buy: 5.0
+    sell: 1.0
+  white_wool:
+    buy: 10.0
+    sell: 3.0
+  orange_wool:
+    buy: 12.0
+    sell: 4.0
+  magenta_wool:
+    buy: 12.0
+    sell: 4.0
+  light_blue_wool:
+    buy: 12.0
+    sell: 4.0
+  yellow_wool:
+    buy: 12.0
+    sell: 4.0
+  lime_wool:
+    buy: 12.0
+    sell: 4.0
+  pink_wool:
+    buy: 12.0
+    sell: 4.0
+  gray_wool:
+    buy: 12.0
+    sell: 4.0
+  light_gray_wool:
+    buy: 12.0
+    sell: 4.0
+  cyan_wool:
+    buy: 12.0
+    sell: 4.0
+  purple_wool:
+    buy: 12.0
+    sell: 4.0
+  blue_wool:
+    buy: 12.0
+    sell: 4.0
+  brown_wool:
+    buy: 12.0
+    sell: 4.0
+  green_wool:
+    buy: 12.0
+    sell: 4.0
+  red_wool:
+    buy: 12.0
+    sell: 4.0
+  black_wool:
+    buy: 12.0
+    sell: 4.0
+  terracotta:
+    buy: 10.0
+    sell: 3.0
+  stone_bricks:
+    buy: 4.0
+    sell: 1.0
+  mossy_stone_bricks:
+    buy: 12.0
+    sell: 4.0
+  cracked_stone_bricks:
+    buy: 5.0
+    sell: 1.0
+  chiseled_stone_bricks:
+    buy: 8.0
+    sell: 2.0
+  deepslate:
+    buy: 3.0
+    sell: 0.75
+  cobbled_deepslate:
+    buy: 1.5
+    sell: 0.25
+  polished_deepslate:
+    buy: 5.0
+    sell: 1.0
+  deepslate_bricks:
+    buy: 6.0
+    sell: 1.5
+  tuff:
+    buy: 2.0
+    sell: 0.5
+  calcite:
+    buy: 15.0
+    sell: 4.0
+  dripstone_block:
+    buy: 12.0
+    sell: 3.0
+  mud:
+    buy: 3.0
+    sell: 0.5
+  packed_mud:
+    buy: 5.0
+    sell: 1.0
+  mud_bricks:
+    buy: 8.0
+    sell: 2.0
+  sea_lantern:
+    buy: 100.0
+    sell: 25.0
+  glowstone:
+    buy: 80.0
+    sell: 20.0
+  andesite:
+    buy: 2.0
+    sell: 0.5
+  diorite:
+    buy: 2.0
+    sell: 0.5
+  granite:
+    buy: 2.0
+    sell: 0.5

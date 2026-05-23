@@ -153,7 +153,7 @@ public final class ShopCommand {
             var hand = player.getInventory().getItemInMainHand();
             String msg = configManager.getMainConfig().getMessage("sell-success")
                     .replace("<amount>", "?")
-                    .replace("<item>", hand.getType().name())
+                    .replace("<item>", "<lang:" + hand.getType().translationKey() + ">")
                     .replace("<price>", "?");
             player.sendMessage(MM.deserialize(prefix + msg));
         }

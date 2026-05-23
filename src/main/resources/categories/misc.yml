@@ -1,37 +1,26 @@
+# Miscellaneous category
+
 title: "<white>Miscellaneous"
 
 items:
-  - material: STRING
-    name: "<white>String"
-    buy-price: 4.0
-    sell-price: 1.5
-
-  - material: LEATHER
-    name: "<dark_orange>Leather"
-    buy-price: 8.0
-    sell-price: 3.0
-
-  - material: BONE
-    name: "<white>Bone"
-    buy-price: 5.0
-    sell-price: 2.0
-
-  - material: GUNPOWDER
-    name: "<gray>Gunpowder"
-    buy-price: 10.0
-    sell-price: 4.0
-
-  - material: ENDER_PEARL
-    name: "<dark_green>Ender Pearl"
-    buy-price: 30.0
-    sell-price: 12.0
-
-  - material: BLAZE_ROD
-    name: "<gold>Blaze Rod"
-    buy-price: 25.0
-    sell-price: 10.0
-
-  - material: SLIME_BALL
-    name: "<green>Slime Ball"
-    buy-price: 12.0
-    sell-price: 5.0
+  string:
+    buy: 4.0
+    sell: 1.5
+  leather:
+    buy: 8.0
+    sell: 3.0
+  bone:
+    buy: 5.0
+    sell: 2.0
+  gunpowder:
+    buy: 10.0
+    sell: 4.0
+  ender_pearl:
+    buy: 30.0
+    sell: 12.0
+  blaze_rod:
+    buy: 25.0
+    sell: 10.0
+  slime_ball:
+    buy: 12.0
+    sell: 5.0

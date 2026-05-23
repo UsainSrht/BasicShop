@@ -1,6 +1,7 @@
 package com.basicshop.gui;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -57,11 +58,11 @@ public abstract class AbstractShopGui implements InventoryHolder {
         ItemMeta meta = stack.getItemMeta();
         if (meta == null) return stack;
 
-        meta.displayName(MM.deserialize(miniName));
+        meta.displayName(MM.deserialize(miniName).decoration(TextDecoration.ITALIC, false));
 
         if (miniLore != null && !miniLore.isEmpty()) {
             List<Component> loreComponents = miniLore.stream()
-                    .map(MM::deserialize)
+                    .map(line -> MM.deserialize(line).decoration(TextDecoration.ITALIC, false))
                     .toList();
             meta.lore(loreComponents);
         } else {
@@ -80,15 +81,36 @@ public abstract class AbstractShopGui implements InventoryHolder {
     }
 
     /**
-     * Fills all null/AIR slots with the given filler item.
+     * Fills all null/AIR slots with the given filler item,
+     * optionally hiding its tooltip.
      */
-    protected void fillEmpty(Material fillerMaterial, String fillerName) {
+    protected void fillEmpty(Material fillerMaterial, String fillerName, boolean hideTooltip) {
         ItemStack filler = buildItem(fillerMaterial, fillerName);
+        ItemMeta meta = filler.getItemMeta();
+        if (meta != null) {
+            meta.setHideTooltip(hideTooltip);
+            filler.setItemMeta(meta);
+        }
         for (int i = 0; i < inventory.getSize(); i++) {
             ItemStack existing = inventory.getItem(i);
             if (existing == null || existing.getType() == Material.AIR) {
                 inventory.setItem(i, filler);
             }
         }
+    }
+
+    /**
+     * Converts a {@link Material} enum name to a human-readable title-cased string.
+     * e.g. {@code OAK_LOG} → {@code "Oak Log"}, {@code COBBLESTONE} → {@code "Cobblestone"}.
+     */
+    protected static String formatMaterialName(Material material) {
+        String[] words = material.name().toLowerCase().split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (!sb.isEmpty()) sb.append(' ');
+            sb.append(Character.toUpperCase(word.charAt(0)));
+            sb.append(word.substring(1));
+        }
+        return sb.toString();
     }
 }

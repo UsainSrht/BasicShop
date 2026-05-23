@@ -2,8 +2,6 @@ package com.basicshop.api.model;
 
 import org.bukkit.Material;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.OptionalDouble;
 
 /**
@@ -16,23 +14,17 @@ public final class ShopItem {
 
     private final String id;
     private final Material material;
-    private final String displayName;   // MiniMessage string
-    private final List<String> lore;    // MiniMessage strings
     private final OptionalDouble buyPrice;
     private final OptionalDouble sellPrice;
 
     public ShopItem(
             String id,
             Material material,
-            String displayName,
-            List<String> lore,
             OptionalDouble buyPrice,
             OptionalDouble sellPrice
     ) {
         this.id = id;
         this.material = material;
-        this.displayName = displayName;
-        this.lore = Collections.unmodifiableList(lore);
         this.buyPrice = buyPrice;
         this.sellPrice = sellPrice;
     }
@@ -44,16 +36,6 @@ public final class ShopItem {
 
     public Material getMaterial() {
         return material;
-    }
-
-    /** MiniMessage-formatted display name. */
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    /** Immutable list of MiniMessage-formatted lore lines. */
-    public List<String> getLore() {
-        return lore;
     }
 
     /**
