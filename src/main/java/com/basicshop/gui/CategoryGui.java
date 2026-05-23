@@ -40,10 +40,13 @@ import java.util.List;
  */
 public final class CategoryGui extends AbstractShopGui {
 
-    private static final int PAGE_SIZE = 45;
-    private static final int SLOT_PREV = 45;
-    private static final int SLOT_BACK = 48;
-    private static final int SLOT_NEXT = 53;
+    private static final int CLASSIC_PAGE_SIZE = 45;
+    private static final int[] MODERN_ITEM_SLOTS = {
+        10, 11, 12, 13, 14, 15, 16,
+        19, 20, 21, 22, 23, 24, 25,
+        28, 29, 30, 31, 32, 33, 34,
+        37, 38, 39, 40, 41, 42, 43
+    };
 
     private final ConfigManager configManager;
     private final ShopAPI shopAPI;
@@ -51,6 +54,12 @@ public final class CategoryGui extends AbstractShopGui {
     private final Player viewer;
     private final ShopCategory category;
     private int page;
+
+    private final int slotBack;
+    private final int slotPrev;
+    private final int slotNext;
+    private final boolean modern;
+    private final int pageSize;
 
     public CategoryGui(
             ConfigManager configManager,
@@ -66,31 +75,42 @@ public final class CategoryGui extends AbstractShopGui {
         this.viewer        = viewer;
         this.category      = category;
         this.page          = page;
+
+        var catGuiCfg = configManager.getMainConfig().getCategoryGuiConfig();
+        this.slotBack = catGuiCfg.backButton().slot();
+        this.slotPrev = catGuiCfg.prevButton().slot();
+        this.slotNext = catGuiCfg.nextButton().slot();
+        this.modern   = configManager.getMainConfig().isModernItemListing();
+        this.pageSize = modern ? MODERN_ITEM_SLOTS.length : CLASSIC_PAGE_SIZE;
+
         build();
     }
 
     private void build() {
         List<ShopItem> items = category.getItems();
-        int totalPages = Math.max(1, (int) Math.ceil((double) items.size() / PAGE_SIZE));
+        int totalPages = Math.max(1, (int) Math.ceil((double) items.size() / pageSize));
         page = Math.max(0, Math.min(page, totalPages - 1));
 
         // Include page info in title only when there is more than one page
         String titleStr = category.getDisplayName();
         if (totalPages > 1) {
-            titleStr += " <gray>(" + (page + 1) + "/" + totalPages + ")";
+            titleStr += configManager.getMainConfig().getCategoryGuiConfig().pageFormat()
+                    .replace("<page>", String.valueOf(page + 1))
+                    .replace("<total>", String.valueOf(totalPages));
         }
         Component title = MM.deserialize(titleStr);
         inventory = Bukkit.createInventory(this, 54, title);
 
-        int start = page * PAGE_SIZE;
-        int end   = Math.min(start + PAGE_SIZE, items.size());
+        int start = page * pageSize;
+        int end   = Math.min(start + pageSize, items.size());
 
         for (int i = start; i < end; i++) {
             ShopItem item = items.get(i);
             String itemName = configManager.getMainConfig().getItemDisplayName()
                     .replace("<item>", "<lang:" + item.getMaterial().translationKey() + ">");
             ItemStack icon = buildItem(item.getMaterial(), itemName, buildItemLore(item));
-            inventory.setItem(i - start, icon);
+            int guiSlot = modern ? MODERN_ITEM_SLOTS[i - start] : (i - start);
+            inventory.setItem(guiSlot, icon);
         }
 
         // Navigation bar (bottom row)
@@ -101,14 +121,14 @@ public final class CategoryGui extends AbstractShopGui {
         com.basicshop.config.MainConfig.FillerConfig    fillerCfg = catGuiCfg.filler();
 
         if (page > 0) {
-            inventory.setItem(SLOT_PREV, buildItem(prevCfg.material(), prevCfg.name(), prevCfg.lore()));
+            inventory.setItem(slotPrev, buildItem(prevCfg.material(), prevCfg.name(), prevCfg.lore()));
         }
-        inventory.setItem(SLOT_BACK, buildItem(backCfg.material(), backCfg.name(), backCfg.lore()));
+        inventory.setItem(slotBack, buildItem(backCfg.material(), backCfg.name(), backCfg.lore()));
         if (page < totalPages - 1) {
-            inventory.setItem(SLOT_NEXT, buildItem(nextCfg.material(), nextCfg.name(), nextCfg.lore()));
+            inventory.setItem(slotNext, buildItem(nextCfg.material(), nextCfg.name(), nextCfg.lore()));
         }
 
-        // Filler for the bottom row gaps
+        // Filler — bottom row only in classic mode, all empty slots in modern mode
         if (fillerCfg.enabled()) {
             ItemStack navFiller = buildItem(fillerCfg.material(), fillerCfg.name());
             ItemMeta navFillerMeta = navFiller.getItemMeta();
@@ -116,7 +136,8 @@ public final class CategoryGui extends AbstractShopGui {
                 navFillerMeta.setHideTooltip(fillerCfg.hideTooltip());
                 navFiller.setItemMeta(navFillerMeta);
             }
-            for (int s = 45; s < 54; s++) {
+            int fillFrom = modern ? 0 : 45;
+            for (int s = fillFrom; s < 54; s++) {
                 if (inventory.getItem(s) == null) {
                     inventory.setItem(s, navFiller);
                 }
@@ -128,20 +149,21 @@ public final class CategoryGui extends AbstractShopGui {
         boolean buyEnabled  = shopAPI.isBuyingEnabled() && item.canBuy();
         boolean sellEnabled = shopAPI.isSellingEnabled() && item.canSell();
 
-        String priceBuy  = buyEnabled  ? String.format("%.2f", item.getBuyPrice().getAsDouble())  : null;
-        String priceSell = sellEnabled ? String.format("%.2f", item.getSellPrice().getAsDouble()) : null;
+        String disabledText = configManager.getMainConfig().getDisabledText();
+        String priceBuy  = buyEnabled  ? configManager.getMainConfig().formatPrice(item.getBuyPrice().getAsDouble())  : disabledText;
+        String priceSell = sellEnabled ? configManager.getMainConfig().formatPrice(item.getSellPrice().getAsDouble()) : disabledText;
 
         List<String> result = new ArrayList<>();
         for (String line : configManager.getMainConfig().getItemDisplayLore()) {
-            boolean isBuyCond  = line.contains("<price_buy>")  || line.contains("<if_buy>");
-            boolean isSellCond = line.contains("<price_sell>") || line.contains("<if_sell>");
+            boolean isBuyCond  = line.contains("<if_buy>");
+            boolean isSellCond = line.contains("<if_sell>");
 
             if (isBuyCond  && !buyEnabled)  continue;
             if (isSellCond && !sellEnabled) continue;
 
             String resolved = line
-                    .replace("<price_buy>",  priceBuy  != null ? priceBuy  : "")
-                    .replace("<price_sell>", priceSell != null ? priceSell : "")
+                    .replace("<price_buy>",  priceBuy)
+                    .replace("<price_sell>", priceSell)
                     .replace("<if_buy>",  "")
                     .replace("<if_sell>", "");
             result.add(resolved);
@@ -160,7 +182,7 @@ public final class CategoryGui extends AbstractShopGui {
         int slot      = event.getRawSlot();
         ClickType type = event.getClick();
 
-        if (slot == SLOT_BACK) {
+        if (slot == slotBack) {
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 CategoriesGui cg = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
                 player.openInventory(cg.getInventory());
@@ -168,7 +190,7 @@ public final class CategoryGui extends AbstractShopGui {
             return;
         }
 
-        if (slot == SLOT_PREV && page > 0) {
+        if (slot == slotPrev && page > 0) {
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 CategoryGui prev = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page - 1);
                 player.openInventory(prev.getInventory());
@@ -176,8 +198,8 @@ public final class CategoryGui extends AbstractShopGui {
             return;
         }
 
-        if (slot == SLOT_NEXT) {
-            int totalPages = Math.max(1, (int) Math.ceil((double) category.getItems().size() / PAGE_SIZE));
+        if (slot == slotNext) {
+            int totalPages = Math.max(1, (int) Math.ceil((double) category.getItems().size() / pageSize));
             if (page < totalPages - 1) {
                 morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                     CategoryGui next = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page + 1);
@@ -187,9 +209,10 @@ public final class CategoryGui extends AbstractShopGui {
             return;
         }
 
-        // Item slots (0–44)
-        if (slot >= 0 && slot < PAGE_SIZE) {
-            int index = page * PAGE_SIZE + slot;
+        // Item slots
+        int itemIndex = findItemIndex(slot);
+        if (itemIndex >= 0) {
+            int index = page * pageSize + itemIndex;
             List<ShopItem> items = category.getItems();
             if (index >= items.size()) return;
             ShopItem item = items.get(index);
@@ -201,6 +224,16 @@ public final class CategoryGui extends AbstractShopGui {
                 handleTransaction(player, item, isBuy, action.amount());
             }
         }
+    }
+
+    private int findItemIndex(int slot) {
+        if (modern) {
+            for (int i = 0; i < MODERN_ITEM_SLOTS.length; i++) {
+                if (MODERN_ITEM_SLOTS[i] == slot) return i;
+            }
+            return -1;
+        }
+        return (slot >= 0 && slot < CLASSIC_PAGE_SIZE) ? slot : -1;
     }
 
     private void handleTransaction(Player player, ShopItem item, boolean isBuy, int amount) {
@@ -227,7 +260,7 @@ public final class CategoryGui extends AbstractShopGui {
                     : item.getSellPrice().orElse(0) * (amount == -1 ? 1 : amount);
             msg = msg.replace("<amount>", amountStr)
                     .replace("<item>",   "<lang:" + item.getMaterial().translationKey() + ">")
-                    .replace("<price>",  String.format("%.2f", price));
+                    .replace("<price>",  configManager.getMainConfig().formatPrice(price));
             player.sendMessage(MM.deserialize(prefix + msg));
             return;
         }

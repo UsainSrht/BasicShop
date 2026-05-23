@@ -2,7 +2,7 @@
 # Item keys are lowercase material names (as used in the /give command).
 # Omit 'buy' or 'sell' to disable that direction for an item.
 
-title: "<green>Blocks"
+title: "<shadow><green>Blocks</shadow>"
 
 items:
   grass_block:

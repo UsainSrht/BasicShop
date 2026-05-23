@@ -31,7 +31,7 @@ import space.arim.morepaperlib.MorePaperLib;
 public final class BasicShop extends JavaPlugin {
 
     /** bStats plugin ID — register at https://bstats.org to obtain a real ID. */
-    private static final int BSTATS_PLUGIN_ID = 12345;
+    private static final int BSTATS_PLUGIN_ID = 31510;
 
     private MorePaperLib morePaperLib;
     private ConfigManager configManager;

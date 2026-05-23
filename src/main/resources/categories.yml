@@ -1,6 +1,6 @@
 # Main Categories GUI configuration
 gui:
-  title: "<gold><bold>Shop</bold></gold>"
+  title: "<shadow><gold><bold>Shop</bold></gold></shadow>"
   rows: 6
 
   # Slot (0-indexed) in the Categories GUI reserved for the QuickSell button
@@ -28,34 +28,34 @@ categories:
   blocks:
     slot: 10
     material: GRASS_BLOCK
-    name: "<green>Blocks"
+    name: "<shadow><green>Blocks</shadow>"
     lore:
       - "<gray>Building blocks and materials."
 
   tools:
     slot: 11
     material: IRON_PICKAXE
-    name: "<aqua>Tools"
+    name: "<shadow><aqua>Tools</shadow>"
     lore:
       - "<gray>Axes, pickaxes, shovels, and more."
 
   food:
     slot: 12
     material: COOKED_BEEF
-    name: "<yellow>Food"
+    name: "<shadow><yellow>Food</shadow>"
     lore:
       - "<gray>Consumable items and ingredients."
 
   ores:
     slot: 13
     material: DIAMOND_ORE
-    name: "<aqua>Ores & Gems"
+    name: "<shadow><aqua>Ores & Gems</shadow>"
     lore:
       - "<gray>Ores, ingots, and precious gems."
 
   misc:
     slot: 14
     material: CHEST
-    name: "<white>Miscellaneous"
+    name: "<shadow><white>Miscellaneous</shadow>"
     lore:
       - "<gray>Everything else."

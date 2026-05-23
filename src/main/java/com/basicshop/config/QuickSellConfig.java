@@ -70,11 +70,8 @@ public final class QuickSellConfig {
 
     private static Material parseMaterial(String name, Material fallback) {
         if (name == null) return fallback;
-        try {
-            return Material.valueOf(name.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return fallback;
-        }
+        Material mat = Material.matchMaterial(name.toUpperCase());
+        return mat != null ? mat : fallback;
     }
 
     public String getGuiTitle()          { return guiTitle; }

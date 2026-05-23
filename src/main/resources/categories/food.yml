@@ -1,6 +1,6 @@
 # Food category
 
-title: "<yellow>Food"
+title: "<shadow><yellow>Food</shadow>"
 
 items:
   bread:

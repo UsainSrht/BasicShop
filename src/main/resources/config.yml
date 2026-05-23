@@ -7,6 +7,11 @@ global:
   buying-enabled: true
   # Set to false to completely disable selling to the shop
   selling-enabled: true
+  disabled-text: "<red>Disabled"
+  # DecimalFormat pattern used to display prices
+  number-format: "#,##0.00"
+  # When true, items are shown in a modern bordered layout (rows 2-5, 7 items per row)
+  modern-item-listing: true
 
 # Player-facing messages (MiniMessage format)
 messages:
@@ -38,15 +43,21 @@ messages:
 
 # Category GUI — navigation buttons and bottom-row filler
 category-gui:
+  # Appended to the category name in the GUI title when multiple pages exist.
+  # Placeholders: <page> (current page), <total> (total pages)
+  page-format: " <gray>(<page>/<total>)"
   back-button:
+    slot: 49
     material: BARRIER
     name: "<gray>\u2717 Back to Categories"
     lore: []
   prev-button:
+    slot: 45
     material: ARROW
     name: "<gray>\u2190 Previous Page"
     lore: []
   next-button:
+    slot: 53
     material: ARROW
     name: "<gray>Next Page \u2192"
     lore: []
