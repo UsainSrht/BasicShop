@@ -1,12 +1,12 @@
 # Blocks category
-# Item keys are lowercase material names (as used in the /give command).
-# Omit 'buy' or 'sell' to disable that direction for an item.
+# Item keys are lowercase material names
+# Omit or put negative value for 'buy' or 'sell' to disable that direction for an item.
 
-title: "<shadow><green>Blocks</shadow>"
+title: "<shadow:#000000FF><green>Blocks</shadow>"
 
 items:
   grass_block:
-    buy: 5.0
+    buy: -1
     sell: 2.0
   stone:
     buy: 2.0

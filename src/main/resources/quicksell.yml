@@ -1,7 +1,7 @@
 # QuickSell GUI configuration
 # All display strings support MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
 gui:
-  title: "<gold>Quick Sell \u2014 Inventory"
+  title: "<shadow:#000000FF><gold>Quick Sell \u2014 Inventory"
   rows: 6
 
   close-button:

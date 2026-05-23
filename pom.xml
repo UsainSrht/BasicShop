@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.basicshop</groupId>
+    <groupId>me.usainsrht.basicshop</groupId>
     <artifactId>BasicShop</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
@@ -101,11 +101,11 @@
                             <relocations>
                                 <relocation>
                                     <pattern>space.arim.morepaperlib</pattern>
-                                    <shadedPattern>com.basicshop.libs.morepaperlib</shadedPattern>
+                                    <shadedPattern>me.usainsrht.basicshop.libs.morepaperlib</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>org.bstats</pattern>
-                                    <shadedPattern>com.basicshop.libs.bstats</shadedPattern>
+                                    <shadedPattern>me.usainsrht.basicshop.libs.bstats</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

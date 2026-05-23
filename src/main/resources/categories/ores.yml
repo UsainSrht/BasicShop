@@ -1,6 +1,6 @@
 # Ores & Gems category
 
-title: "<shadow><aqua>Ores & Gems</shadow>"
+title: "<shadow:#000000FF><aqua>Ores & Gems</shadow>"
 
 items:
   coal:

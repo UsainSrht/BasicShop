@@ -1,6 +1,6 @@
 name: BasicShop
 version: ${project.version}
-main: com.basicshop.BasicShop
+main: me.usainsrht.basicshop.BasicShop
 description: A simple, lightweight, and modern Minecraft shop plugin.
 api-version: "26.1"
 folia-supported: true
