@@ -1,0 +1,50 @@
+# Farmer category
+
+title: "<shadow:#000000FF><yellow>Farmer</shadow>"
+
+items:
+  wheat_seeds:
+    buy: 2
+    sell: 1
+  wheat:
+    buy: 5
+    sell: 2
+  carrot:
+    buy: 5
+    sell: 2
+  potato:
+    buy: 5
+    sell: 2
+  beetroot_seeds:
+    buy: 2
+    sell: 1
+  beetroot:
+    buy: 5
+    sell: 2
+  sugar_cane:
+    buy: 4
+    sell: 1
+  bamboo:
+    buy: 2
+    sell: 1
+  cactus:
+    buy: 4
+    sell: 1
+  pumpkin:
+    buy: 8
+    sell: 3
+  melon_slice:
+    buy: 2
+    sell: 1
+  nether_wart:
+    buy: 10
+    sell: 4
+  cocoa_beans:
+    buy: 6
+    sell: 2
+  kelp:
+    buy: 2
+    sell: 1
+  sweet_berries:
+    buy: 3
+    sell: 1

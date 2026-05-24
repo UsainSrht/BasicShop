@@ -25,37 +25,44 @@ gui:
 # Categories to display in the GUI.
 # Each key is the category id and must match a file in the categories/ folder.
 categories:
-  blocks:
+  miner:
     slot: 10
-    material: GRASS_BLOCK
-    name: "<green>Blocks"
+    material: DIAMOND
+    name: "<green>Miner"
     lore:
-      - "<gray>Building blocks and materials."
+      - "<gray>Ores, mining blocks."
 
-  tools:
+  farmer:
     slot: 11
-    material: IRON_PICKAXE
-    name: "<aqua>Tools"
+    material: WHEAT
+    name: "<aqua>Farming"
     lore:
-      - "<gray>Axes, pickaxes, shovels, and more."
+      - "<gray>Crops and farming items."
 
-  food:
+  hunter:
     slot: 12
-    material: COOKED_BEEF
-    name: "<yellow>Food"
+    material: ROTTEN_FLESH
+    name: "<red>Hunter"
     lore:
-      - "<gray>Consumable items and ingredients."
+      - "<gray>Mob loot and drops."
 
-  ores:
+  woodcutter:
     slot: 13
-    material: DIAMOND_ORE
-    name: "<aqua>Ores & Gems"
+    material: OAK_LOG
+    name: "<aqua>Woodcutter"
     lore:
-      - "<gray>Ores, ingots, and precious gems."
+      - "<gray>Wood, logs and leaves."
 
-  misc:
+  fisher:
     slot: 14
-    material: CHEST
-    name: "<white>Miscellaneous"
+    material: FISHING_ROD
+    name: "<blue>Fisher"
     lore:
-      - "<gray>Everything else."
+      - "<gray>Fish and fishing-related items."
+  
+  adventurer:
+    slot: 15
+    material: ENDER_CHEST
+    name: "<dark_purple>Adventurer"
+    lore:
+      - "<gray>Exploration and adventure items."

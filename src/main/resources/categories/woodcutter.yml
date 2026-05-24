@@ -1,0 +1,47 @@
+# Woodcutter category
+
+title: "<shadow:#000000FF><white>Woodcutter</shadow>"
+
+items:
+  oak_log:
+    buy: 10
+    sell: 4
+  birch_log:
+    buy: 10
+    sell: 4
+  spruce_log:
+    buy: 10
+    sell: 4
+  jungle_log:
+    buy: 10
+    sell: 4
+  acacia_log:
+    buy: 10
+    sell: 4
+  dark_oak_log:
+    buy: 10
+    sell: 4
+  mangrove_log:
+    buy: 10
+    sell: 4
+  cherry_log:
+    buy: 10
+    sell: 4
+  oak_sapling:
+    buy: 5
+    sell: 2
+  birch_sapling:
+    buy: 5
+    sell: 2
+  spruce_sapling:
+    buy: 5
+    sell: 2
+  jungle_sapling:
+    buy: 5
+    sell: 2
+  acacia_sapling:
+    buy: 5
+    sell: 2
+  dark_oak_sapling:
+    buy: 5
+    sell: 2

@@ -42,23 +42,54 @@ public final class ConfigManager {
      */
     public void load() {
         // Save default resource files from jar
-        saveDefault("config.yml");
-        saveDefault("categories.yml");
-        saveDefault("quicksell.yml");
-        saveDefaultCategories();
+        try {
+            saveDefault("config.yml");
+            saveDefault("categories.yml");
+            saveDefault("quicksell.yml");
+            saveDefaultCategories();
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not save default configuration files!", e);
+        }
 
-        plugin.reloadConfig();
+        try {
+            plugin.reloadConfig();
+            FileConfiguration mainCfg = plugin.getConfig();
+            this.mainConfig = new MainConfig(mainCfg);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load config.yml!", e);
+            if (this.mainConfig == null) {
+                this.mainConfig = new MainConfig(new YamlConfiguration());
+            }
+        }
 
-        FileConfiguration mainCfg = plugin.getConfig();
-        this.mainConfig = new MainConfig(mainCfg);
+        try {
+            FileConfiguration catsCfg = loadYml("categories.yml");
+            this.categoriesConfig = new CategoriesConfig(catsCfg);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load categories.yml!", e);
+            if (this.categoriesConfig == null) {
+                this.categoriesConfig = new CategoriesConfig(new YamlConfiguration());
+            }
+        }
 
-        FileConfiguration catsCfg = loadYml("categories.yml");
-        this.categoriesConfig = new CategoriesConfig(catsCfg);
+        try {
+            FileConfiguration quickSellCfg = loadYml("quicksell.yml");
+            this.quickSellConfig = new QuickSellConfig(quickSellCfg);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load quicksell.yml!", e);
+            if (this.quickSellConfig == null) {
+                this.quickSellConfig = new QuickSellConfig(new YamlConfiguration());
+            }
+        }
 
-        FileConfiguration quickSellCfg = loadYml("quicksell.yml");
-        this.quickSellConfig = new QuickSellConfig(quickSellCfg);
-
-        this.categories = loadCategories();
+        try {
+            this.categories = loadCategories();
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load shop categories!", e);
+            if (this.categories == null) {
+                this.categories = new ArrayList<>();
+            }
+        }
 
         plugin.getLogger().info("Loaded " + categories.size() + " categories.");
     }

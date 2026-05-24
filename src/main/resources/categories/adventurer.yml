@@ -1,0 +1,35 @@
+# Adventurer category
+
+title: "<shadow:#000000FF><aqua>Adventurer</shadow>"
+
+items:
+  heart_of_the_sea:
+    buy: 2500
+    sell: 1000
+  saddle:
+    buy: 300
+    sell: 120
+  name_tag:
+    buy: 150
+    sell: 60
+  iron_horse_armor:
+    buy: 200
+    sell: 80
+  golden_horse_armor:
+    buy: 250
+    sell: 100
+  diamond_horse_armor:
+    buy: 500
+    sell: 200
+  sponge:
+    buy: 800
+    sell: 320
+  echo_shard:
+    buy: 800
+    sell: 300
+  music_disc_13:
+    buy: 1000
+    sell: 400
+  music_disc_cat:
+    buy: 1000
+    sell: 400

@@ -51,7 +51,11 @@ public final class BasicShop extends JavaPlugin {
 
         // 2. Configuration
         configManager = new ConfigManager(this);
-        configManager.load();
+        try {
+            configManager.load();
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Failed to load configurations! The plugin may not function correctly.", e);
+        }
 
         // 3. Economy (Vault)
         economyProvider = new VaultEconomyProvider();
@@ -78,8 +82,8 @@ public final class BasicShop extends JavaPlugin {
         // 8. bStats
         initMetrics();
 
-        getLogger().info("BasicShop enabled successfully. Loaded "
-                + configManager.getCategories().size() + " categories.");
+        int categoriesCount = configManager.getCategories() != null ? configManager.getCategories().size() : 0;
+        getLogger().info("BasicShop enabled successfully. Loaded " + categoriesCount + " categories.");
     }
 
     @Override

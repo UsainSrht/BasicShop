@@ -1,0 +1,23 @@
+# Fisher category
+
+title: "<shadow:#000000FF><aqua>Fisher</shadow>"
+
+items:
+  cod:
+    buy: 15
+    sell: 6
+  salmon:
+    buy: 20
+    sell: 8
+  pufferfish:
+    buy: 50
+    sell: 20
+  tropical_fish:
+    buy: 60
+    sell: 25
+  ink_sac:
+    buy: 10
+    sell: 4
+  glow_ink_sac:
+    buy: 25
+    sell: 10

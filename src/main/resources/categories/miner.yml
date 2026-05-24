@@ -1,0 +1,67 @@
+# Miner category
+# Item keys are lowercase material names
+# Omit or put negative value for 'buy' or 'sell' to disable that direction for an item.
+
+title: "<shadow:#000000FF><green>Miner</shadow>"
+
+items:
+  cobblestone:
+    buy: 2
+    sell: 1
+  stone:
+    buy: 4
+    sell: 2
+  coal:
+    buy: 10
+    sell: 4
+  coal_block:
+    buy: 90
+    sell: 36
+  raw_copper:
+    buy: 10
+    sell: 4
+  raw_copper_block:
+    buy: 90
+    sell: 36
+  raw_iron:
+    buy: 20
+    sell: 8
+  raw_iron_block:
+    buy: 180
+    sell: 72
+  raw_gold:
+    buy: 25
+    sell: 10
+  raw_gold_block:
+    buy: 2250
+    sell: 90
+  redstone:
+    buy: 12
+    sell: 5
+  redstone_block:
+    buy: 108
+    sell: 45
+  lapis_lazuli:
+    buy: 15
+    sell: 6
+  lapis_block:
+    buy: 135
+    sell: 54
+  diamond:
+    buy: 250
+    sell: 100
+  diamond_block:
+    buy: 2250
+    sell: 900
+  emerald:
+    buy: 150
+    sell: 60
+  emerald_block:
+    buy: 1350
+    sell: 540
+  obsidian:
+    buy: 50
+    sell: 20
+  ancient_debris:
+    buy: 1000
+    sell: 400

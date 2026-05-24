@@ -1,0 +1,53 @@
+# Hunter category
+
+title: "<shadow:#000000FF><aqua>Hunter</shadow>"
+
+items:
+  rotten_flesh:
+    buy: 2
+    sell: 1
+  bone:
+    buy: 4
+    sell: 2
+  bone_block:
+    buy: 36
+    sell: 18
+  string:
+    buy: 4
+    sell: 2
+  spider_eye:
+    buy: 6
+    sell: 3
+  gunpowder:
+    buy: 8
+    sell: 4
+  ender_pearl:
+    buy: 50
+    sell: 20
+  slime_ball:
+    buy: 15
+    sell: 6
+  slime_block:
+    buy: 135
+    sell: 54
+  blaze_rod:
+    buy: 30
+    sell: 12
+  ghast_tear:
+    buy: 100
+    sell: 40
+  magma_cream:
+    buy: 25
+    sell: 10
+  leather:
+    buy: 8
+    sell: 3
+  feather:
+    buy: 4
+    sell: 2
+  shulker_shell:
+    buy: 150
+    sell: 60
+  phantom_membrane:
+    buy: 40
+    sell: 16
