@@ -3,6 +3,7 @@ package me.usainsrht.basicshop.command;
 import me.usainsrht.basicshop.api.ShopAPI;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.gui.CategoriesGui;
+import me.usainsrht.basicshop.gui.QuickSellGui;
 import com.mojang.brigadier.Command;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -92,6 +93,11 @@ public final class ShopCommand {
                 .then(Commands.literal("quicksell")
                         .requires(src -> src.getSender() instanceof Player
                                 && src.getSender().hasPermission("basicshop.quicksell"))
+                        .executes(ctx -> {
+                            Player player = (Player) ctx.getSource().getSender();
+                            openQuickSell(player);
+                            return Command.SINGLE_SUCCESS;
+                        })
                         .then(Commands.literal("hand")
                                 .requires(src -> src.getSender() instanceof Player
                                         && src.getSender().hasPermission("basicshop.quicksell.hand"))
@@ -118,6 +124,13 @@ public final class ShopCommand {
     private void openShop(Player player) {
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             CategoriesGui gui = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
+            player.openInventory(gui.getInventory());
+        }, null);
+    }
+
+    private void openQuickSell(Player player) {
+        morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+            QuickSellGui gui = new QuickSellGui(configManager, shopAPI, morePaperLib, player);
             player.openInventory(gui.getInventory());
         }, null);
     }

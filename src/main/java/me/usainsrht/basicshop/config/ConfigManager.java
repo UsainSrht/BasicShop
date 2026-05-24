@@ -155,8 +155,9 @@ public final class ConfigManager {
         for (File file : files) {
             String id = file.getName().replace(".yml", "");
             try {
-                YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
-                List<ShopItem> items = parseItems(id, cfg);
+                // Use the same loading logic as other config files to ensure encoding/defaults are handled
+                FileConfiguration cfg = loadYml("categories/" + file.getName());
+                List<ShopItem> items = parseItems(id, (YamlConfiguration) cfg);
 
                 CategoriesConfig.CategoryEntry entry = entryMap.get(id);
                 String displayName = entry != null ? entry.displayName() : cfg.getString("title", id);
