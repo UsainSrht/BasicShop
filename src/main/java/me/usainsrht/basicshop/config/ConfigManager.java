@@ -109,7 +109,7 @@ public final class ConfigManager {
         // Save built-in category files if the categories/ directory is empty or missing
         File categoriesDir = new File(plugin.getDataFolder(), "categories");
         if (!categoriesDir.exists() || categoriesDir.list() == null || categoriesDir.list().length == 0) {
-            for (String name : new String[]{"blocks.yml", "tools.yml", "food.yml", "ores.yml", "misc.yml"}) {
+            for (String name : new String[]{"miner.yml", "farmer.yml", "hunter.yml", "fisher.yml", "woodcutter.yml", "adventurer.yml"}) {
                 String resource = "categories/" + name;
                 File dest = new File(categoriesDir, name);
                 if (!dest.exists()) {

@@ -12,6 +12,7 @@ import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 import org.bukkit.plugin.java.JavaPlugin;
 import space.arim.morepaperlib.MorePaperLib;
+import java.util.logging.Level;
 
 /**
  * BasicShop — main plugin class.
