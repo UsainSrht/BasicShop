@@ -12,6 +12,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 /**
  * Parsed wrapper around config.yml — global toggles, player messages, and click actions.
@@ -25,6 +26,22 @@ public final class MainConfig {
     public record NavButtonConfig(int slot, Material material, String name, List<String> lore) {}
     public record FillerConfig(boolean enabled, Material material, String name, boolean hideTooltip) {}
     public record CategoryGuiConfig(String pageFormat, NavButtonConfig backButton, NavButtonConfig prevButton, NavButtonConfig nextButton, FillerConfig filler) {}
+
+    /**
+     * Holds the configured root command name, its aliases, and all sub-command names.
+     *
+     * @param root               The root command label (e.g. {@code "shop"}).
+     * @param aliases            Extra aliases for the root command.
+     * @param subcommands        Map of logical key → configured sub-command name.
+     *                           Keys: {@code help}, {@code reload}, {@code quicksell},
+     *                           {@code quicksell-hand}, {@code quicksell-inventory}.
+     */
+    public record CommandsConfig(String root, List<String> aliases, Map<String, String> subcommands) {
+        /** Convenience getter — returns the configured sub-command name or the key itself as fallback. */
+        public String sub(String key) {
+            return subcommands.getOrDefault(key, key);
+        }
+    }
 
     private final boolean buyingEnabled;
     private final boolean sellingEnabled;
@@ -43,6 +60,9 @@ public final class MainConfig {
 
     // Category GUI nav buttons + filler
     private final CategoryGuiConfig categoryGuiConfig;
+
+    // Command names
+    private final CommandsConfig commandsConfig;
 
     public MainConfig(FileConfiguration cfg) {
         this.buyingEnabled       = cfg.getBoolean("global.buying-enabled",      true);
@@ -100,6 +120,9 @@ public final class MainConfig {
 
         ConfigurationSection catGuiSec = cfg.getConfigurationSection("category-gui");
         this.categoryGuiConfig = parseCategoryGuiConfig(catGuiSec);
+
+        ConfigurationSection cmdSec = cfg.getConfigurationSection("commands");
+        this.commandsConfig = parseCommandsConfig(cmdSec);
     }
 
     private static CategoryGuiConfig parseCategoryGuiConfig(ConfigurationSection sec) {
@@ -135,6 +158,28 @@ public final class MainConfig {
         return mat != null ? mat : fallback;
     }
 
+    private static CommandsConfig parseCommandsConfig(ConfigurationSection sec) {
+        String root = sec != null ? sec.getString("root", "shop") : "shop";
+        List<String> aliases = sec != null ? sec.getStringList("aliases") : List.of("bs", "basicshop");
+        if (aliases.isEmpty()) aliases = List.of("bs", "basicshop");
+
+        Map<String, String> subs = new LinkedHashMap<>();
+        ConfigurationSection subSec = sec != null ? sec.getConfigurationSection("subcommands") : null;
+        // Defaults
+        subs.put("help",                "help");
+        subs.put("reload",              "reload");
+        subs.put("quicksell",           "quicksell");
+        subs.put("quicksell-hand",      "hand");
+        subs.put("quicksell-inventory", "inventory");
+        if (subSec != null) {
+            for (String key : subs.keySet()) {
+                String val = subSec.getString(key);
+                if (val != null && !val.isBlank()) subs.put(key, val);
+            }
+        }
+        return new CommandsConfig(root, Collections.unmodifiableList(aliases), Collections.unmodifiableMap(subs));
+    }
+
     public boolean isBuyingEnabled()     { return buyingEnabled; }
     public boolean isSellingEnabled()    { return sellingEnabled; }
     public String getDisabledText()      { return disabledText; }
@@ -162,4 +207,5 @@ public final class MainConfig {
     public List<String> getItemDisplayLore()              { return itemDisplayLore; }
     public Map<ClickType, ClickAction> getClickActions()         { return clickActions; }
     public CategoryGuiConfig getCategoryGuiConfig()               { return categoryGuiConfig; }
+    public CommandsConfig getCommandsConfig()                     { return commandsConfig; }
 }

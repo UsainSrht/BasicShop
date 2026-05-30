@@ -2,6 +2,7 @@ package me.usainsrht.basicshop.command;
 
 import me.usainsrht.basicshop.api.ShopAPI;
 import me.usainsrht.basicshop.config.ConfigManager;
+import me.usainsrht.basicshop.config.MainConfig;
 import me.usainsrht.basicshop.gui.CategoriesGui;
 import me.usainsrht.basicshop.gui.QuickSellGui;
 import com.mojang.brigadier.Command;
@@ -12,8 +13,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import space.arim.morepaperlib.MorePaperLib;
-
-import java.util.List;
 
 /**
  * Registers all BasicShop commands via the Paper Brigadier lifecycle API.
@@ -52,10 +51,11 @@ public final class ShopCommand {
     public void register() {
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             final Commands commands = event.registrar();
+            MainConfig.CommandsConfig cmdCfg = configManager.getMainConfig().getCommandsConfig();
             commands.register(
-                    buildCommandTree(),
+                    buildCommandTree(cmdCfg),
                     "BasicShop main command.",
-                    List.of("bs", "basicshop")
+                    cmdCfg.aliases()
             );
         });
     }
@@ -64,8 +64,8 @@ public final class ShopCommand {
     // Command tree
     // -------------------------------------------------------------------------
 
-    private com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> buildCommandTree() {
-        return Commands.literal("shop")
+    private com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> buildCommandTree(MainConfig.CommandsConfig cmdCfg) {
+        return Commands.literal(cmdCfg.root())
                 .requires(src -> src.getSender() instanceof Player
                         && src.getSender().hasPermission("basicshop.use"))
                 .executes(ctx -> {
@@ -73,15 +73,15 @@ public final class ShopCommand {
                     openShop(player);
                     return Command.SINGLE_SUCCESS;
                 })
-                .then(Commands.literal("help")
+                .then(Commands.literal(cmdCfg.sub("help"))
                         .requires(src -> src.getSender() instanceof Player
                                 && src.getSender().hasPermission("basicshop.use"))
                         .executes(ctx -> {
                             Player player = (Player) ctx.getSource().getSender();
-                            sendHelp(player);
+                            sendHelp(player, cmdCfg);
                             return Command.SINGLE_SUCCESS;
                         }))
-                .then(Commands.literal("reload")
+                .then(Commands.literal(cmdCfg.sub("reload"))
                         .requires(src -> src.getSender().hasPermission("basicshop.admin.reload"))
                         .executes(ctx -> {
                             configManager.load();
@@ -90,7 +90,7 @@ public final class ShopCommand {
                             ctx.getSource().getSender().sendMessage(MM.deserialize(msg));
                             return Command.SINGLE_SUCCESS;
                         }))
-                .then(Commands.literal("quicksell")
+                .then(Commands.literal(cmdCfg.sub("quicksell"))
                         .requires(src -> src.getSender() instanceof Player
                                 && src.getSender().hasPermission("basicshop.quicksell"))
                         .executes(ctx -> {
@@ -98,7 +98,7 @@ public final class ShopCommand {
                             openQuickSell(player);
                             return Command.SINGLE_SUCCESS;
                         })
-                        .then(Commands.literal("hand")
+                        .then(Commands.literal(cmdCfg.sub("quicksell-hand"))
                                 .requires(src -> src.getSender() instanceof Player
                                         && src.getSender().hasPermission("basicshop.quicksell.hand"))
                                 .executes(ctx -> {
@@ -106,7 +106,7 @@ public final class ShopCommand {
                                     executeQuickSellHand(player);
                                     return Command.SINGLE_SUCCESS;
                                 }))
-                        .then(Commands.literal("inventory")
+                        .then(Commands.literal(cmdCfg.sub("quicksell-inventory"))
                                 .requires(src -> src.getSender() instanceof Player
                                         && src.getSender().hasPermission("basicshop.quicksell.inventory"))
                                 .executes(ctx -> {
@@ -135,15 +135,16 @@ public final class ShopCommand {
         }, null);
     }
 
-    private void sendHelp(Player player) {
+    private void sendHelp(Player player, MainConfig.CommandsConfig cmdCfg) {
         String prefix = configManager.getMainConfig().getPrefix();
+        String root   = cmdCfg.root();
         player.sendMessage(MM.deserialize(prefix + "<yellow>BasicShop Commands:"));
-        player.sendMessage(MM.deserialize("<gold>/shop</gold> <gray>— Open the shop"));
-        player.sendMessage(MM.deserialize("<gold>/shop help</gold> <gray>— Show this message"));
-        player.sendMessage(MM.deserialize("<gold>/shop quicksell hand</gold> <gray>— Sell the item in your hand"));
-        player.sendMessage(MM.deserialize("<gold>/shop quicksell inventory</gold> <gray>— Sell all sellable items"));
+        player.sendMessage(MM.deserialize("<gold>/" + root + "</gold> <gray>— Open the shop"));
+        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("help") + "</gold> <gray>— Show this message"));
+        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("quicksell") + " " + cmdCfg.sub("quicksell-hand") + "</gold> <gray>— Sell the item in your hand"));
+        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("quicksell") + " " + cmdCfg.sub("quicksell-inventory") + "</gold> <gray>— Sell all sellable items"));
         if (player.hasPermission("basicshop.admin.reload")) {
-            player.sendMessage(MM.deserialize("<gold>/shop reload</gold> <gray>— Reload configuration"));
+            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("reload") + "</gold> <gray>— Reload configuration"));
         }
     }
 

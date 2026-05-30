@@ -8,6 +8,8 @@ gui:
     slot: 45
     material: BARRIER
     name: "<gray>\u2717 Close"
+    # When true, clicking this button opens the main categories GUI instead of closing the inventory.
+    return-to-categories: false
 
   sell-all-button:
     slot: 49

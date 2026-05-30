@@ -2,20 +2,17 @@ name: BasicShop
 version: ${project.version}
 main: me.usainsrht.basicshop.BasicShop
 description: A simple, lightweight, and modern Minecraft shop plugin.
-api-version: "26.1"
+api-version: "1.21"
 folia-supported: true
 authors:
   - UsainSrht
 
-soft-depends:
-  - Vault
-
-commands:
-  shop:
-    description: Main shop command
-    usage: /shop [help|reload|quicksell]
-    aliases:
-      - bs
+dependencies:
+  server:
+    Vault:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 permissions:
   basicshop.use:
@@ -35,11 +32,11 @@ permissions:
     default: true
 
   basicshop.quicksell.hand:
-    description: Allows the player to use /shop quicksell hand
+    description: Allows the player to use the quicksell hand subcommand
     default: true
 
   basicshop.quicksell.inventory:
-    description: Allows the player to use /shop quicksell inventory
+    description: Allows the player to use the quicksell inventory subcommand
     default: true
 
   basicshop.admin.reload:
@@ -51,3 +48,4 @@ permissions:
     default: op
     children:
       basicshop.admin.reload: true
+

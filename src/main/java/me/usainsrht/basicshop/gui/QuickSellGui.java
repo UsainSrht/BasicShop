@@ -126,7 +126,14 @@ public final class QuickSellGui extends AbstractShopGui {
         QuickSellConfig cfg = configManager.getQuickSellConfig();
 
         if (slot == cfg.getCloseSlot()) {
-            morePaperLib.scheduling().entitySpecificScheduler(player).run((Runnable) player::closeInventory, null);
+            if (cfg.isCloseReturnsToCategories()) {
+                morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+                    CategoriesGui categories = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
+                    player.openInventory(categories.getInventory());
+                }, null);
+            } else {
+                morePaperLib.scheduling().entitySpecificScheduler(player).run((Runnable) player::closeInventory, null);
+            }
             return;
         }
 

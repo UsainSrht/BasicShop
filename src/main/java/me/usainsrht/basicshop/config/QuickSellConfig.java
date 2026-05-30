@@ -18,6 +18,7 @@ public final class QuickSellConfig {
     private final int closeSlot;
     private final Material closeMaterial;
     private final String closeName;
+    private final boolean closeReturnsToCategories;
 
     private final int sellAllSlot;
     private final Material sellAllMaterial;
@@ -42,9 +43,10 @@ public final class QuickSellConfig {
         this.guiRows  = cfg.getInt("gui.rows", 6);
 
         ConfigurationSection close = cfg.getConfigurationSection("gui.close-button");
-        this.closeSlot     = close != null ? close.getInt("slot", 45) : 45;
-        this.closeMaterial = parseMaterial(close != null ? close.getString("material") : null, Material.BARRIER);
-        this.closeName     = close != null ? close.getString("name", "<gray>\u2717 Close") : "<gray>\u2717 Close";
+        this.closeSlot                  = close != null ? close.getInt("slot", 45) : 45;
+        this.closeMaterial              = parseMaterial(close != null ? close.getString("material") : null, Material.BARRIER);
+        this.closeName                  = close != null ? close.getString("name", "<gray>\u2717 Close") : "<gray>\u2717 Close";
+        this.closeReturnsToCategories   = close != null && close.getBoolean("return-to-categories", false);
 
         ConfigurationSection sellAll = cfg.getConfigurationSection("gui.sell-all-button");
         this.sellAllSlot     = sellAll != null ? sellAll.getInt("slot", 49) : 49;
@@ -76,9 +78,10 @@ public final class QuickSellConfig {
 
     public String getGuiTitle()          { return guiTitle; }
     public int getGuiRows()              { return guiRows; }
-    public int getCloseSlot()            { return closeSlot; }
-    public Material getCloseMaterial()   { return closeMaterial; }
-    public String getCloseName()         { return closeName; }
+    public int getCloseSlot()                    { return closeSlot; }
+    public Material getCloseMaterial()           { return closeMaterial; }
+    public String getCloseName()                 { return closeName; }
+    public boolean isCloseReturnsToCategories()  { return closeReturnsToCategories; }
     public int getSellAllSlot()          { return sellAllSlot; }
     public Material getSellAllMaterial() { return sellAllMaterial; }
     public String getSellAllName()       { return sellAllName; }

@@ -1,6 +1,23 @@
 # BasicShop Configuration
 # All display strings support MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
 
+# Command names
+# Changes here require a server restart to take effect (Brigadier commands are registered once at startup).
+commands:
+  # The root command (e.g. /shop). Change this if another plugin already claims /shop.
+  root: shop
+  # Additional aliases for the root command.
+  aliases:
+    - bs
+    - basicshop
+  # Sub-command names. Rename them to whatever you like.
+  subcommands:
+    help: help
+    reload: reload
+    quicksell: quicksell
+    quicksell-hand: hand
+    quicksell-inventory: inventory
+
 # Global toggles
 global:
   # Set to false to completely disable buying from the shop
