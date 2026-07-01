@@ -169,6 +169,32 @@ public final class QuickSellGui extends AbstractShopGui {
         }, null);
     }
 
+    /**
+     * Handles shift-clicks in the player's own inventory while this GUI is open.
+     */
+    public void handlePlayerInventoryShiftClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null || clickedItem.getType().isAir()) return;
+
+        if (shopAPI instanceof ShopAPIImpl impl) {
+            Optional<ShopItem> shopItemOpt = impl.getItemByMaterial(clickedItem.getType());
+            if (shopItemOpt.isPresent()) {
+                ShopItem shopItem = shopItemOpt.get();
+                if (shopItem.canSell()) {
+                    TransactionResult result = shopAPI.sellItem(player, shopItem, clickedItem.getAmount());
+                    sendResultMessage(player, result, shopItem, clickedItem.getAmount());
+
+                    // Refresh GUI
+                    morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+                        QuickSellGui refreshed = new QuickSellGui(configManager, shopAPI, morePaperLib, player);
+                        player.openInventory(refreshed.getInventory());
+                    }, null);
+                }
+            }
+        }
+    }
+
     private void sendResultMessage(Player player, TransactionResult result, ShopItem shopItem, int amount) {
         String prefix = configManager.getMainConfig().getPrefix();
         if (result == TransactionResult.SUCCESS) {

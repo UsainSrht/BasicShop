@@ -1,6 +1,7 @@
 package me.usainsrht.basicshop.listener;
 
 import me.usainsrht.basicshop.gui.AbstractShopGui;
+import me.usainsrht.basicshop.gui.QuickSellGui;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -21,8 +22,20 @@ public final class GuiListener implements Listener {
         InventoryHolder holder = event.getInventory().getHolder();
         if (!(holder instanceof AbstractShopGui gui)) return;
 
-        // Allow clicks in the player's own inventory area (bottom half)
-        if (event.getRawSlot() >= event.getInventory().getSize()) return;
+        // Route clicks to GUI handler
+        int rawSlot = event.getRawSlot();
+        int invSize = event.getInventory().getSize();
+
+        if (rawSlot >= invSize) {
+            // Clicked in player inventory area
+            if (gui instanceof QuickSellGui quickSellGui) {
+                if (event.isShiftClick()) {
+                    quickSellGui.handlePlayerInventoryShiftClick(event);
+                }
+                event.setCancelled(true);
+            }
+            return;
+        }
 
         // Cancel item movement only within the shop GUI area
         event.setCancelled(true);

@@ -237,11 +237,35 @@ public final class CategoryGui extends AbstractShopGui {
     }
 
     private void handleTransaction(Player player, ShopItem item, boolean isBuy, int amount) {
+        int finalAmount = amount;
+        if (!isBuy) {
+            int available = 0;
+            for (ItemStack stack : player.getInventory().getContents()) {
+                if (stack != null && stack.getType() == item.getMaterial()) {
+                    available += stack.getAmount();
+                }
+            }
+            if (amount == -1) {
+                finalAmount = available;
+            } else {
+                finalAmount = Math.min(amount, available);
+            }
+
+            if (finalAmount <= 0) {
+                sendTransactionMessage(player, item, TransactionResult.NOT_ENOUGH_ITEMS, false, 0);
+                morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+                    CategoryGui refreshed = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page);
+                    player.openInventory(refreshed.getInventory());
+                }, null);
+                return;
+            }
+        }
+
         TransactionResult result = isBuy
                 ? shopAPI.buyItem(player, item, amount)
-                : (amount == -1 ? shopAPI.sellAll(player, item) : shopAPI.sellItem(player, item, amount));
+                : (amount == -1 ? shopAPI.sellAll(player, item) : shopAPI.sellItem(player, item, finalAmount));
 
-        sendTransactionMessage(player, item, result, isBuy, amount);
+        sendTransactionMessage(player, item, result, isBuy, finalAmount);
 
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             CategoryGui refreshed = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page);
@@ -254,11 +278,8 @@ public final class CategoryGui extends AbstractShopGui {
         if (result == TransactionResult.SUCCESS) {
             String key = isBuy ? "buy-success" : "sell-success";
             String msg = configManager.getMainConfig().getMessage(key);
-            String amountStr = amount == -1 ? "all" : String.valueOf(amount);
-            double price = isBuy
-                    ? item.getBuyPrice().orElse(0)  * (amount == -1 ? 1 : amount)
-                    : item.getSellPrice().orElse(0) * (amount == -1 ? 1 : amount);
-            msg = msg.replace("<amount>", amountStr)
+            double price = (isBuy ? item.getBuyPrice().orElse(0) : item.getSellPrice().orElse(0)) * amount;
+            msg = msg.replace("<amount>", String.valueOf(amount))
                     .replace("<item>",   "<lang:" + item.getMaterial().translationKey() + ">")
                     .replace("<price>",  configManager.getMainConfig().formatPrice(price));
             player.sendMessage(MM.deserialize(prefix + msg));

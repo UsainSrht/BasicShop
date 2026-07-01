@@ -74,13 +74,15 @@ public final class ShopAPIImpl implements ShopAPI {
         if (priceOpt.isEmpty())                    return TransactionResult.SELL_DISABLED;
 
         int available = countInInventory(player, item.getMaterial());
-        if (available < amount)                    return TransactionResult.NOT_ENOUGH_ITEMS;
+        if (available <= 0)                        return TransactionResult.NOT_ENOUGH_ITEMS;
 
-        removeFromInventory(player, item.getMaterial(), amount);
-        double totalEarned = priceOpt.getAsDouble() * amount;
+        int actualAmount = Math.min(amount, available);
+
+        removeFromInventory(player, item.getMaterial(), actualAmount);
+        double totalEarned = priceOpt.getAsDouble() * actualAmount;
         economy.deposit(player, totalEarned);
 
-        record(player, item, TransactionType.SELL, amount, totalEarned);
+        record(player, item, TransactionType.SELL, actualAmount, totalEarned);
         return TransactionResult.SUCCESS;
     }
 
