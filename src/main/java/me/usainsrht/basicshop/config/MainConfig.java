@@ -27,6 +27,9 @@ public final class MainConfig {
     public record FillerConfig(boolean enabled, Material material, String name, boolean hideTooltip) {}
     public record CategoryGuiConfig(String pageFormat, NavButtonConfig backButton, NavButtonConfig prevButton, NavButtonConfig nextButton, FillerConfig filler) {}
 
+    /** A configurable Bukkit sound with volume and pitch. */
+    public record SoundSettings(boolean enabled, String sound, float volume, float pitch) {}
+
     /**
      * Holds the configured root command name, its aliases, and all sub-command names.
      *
@@ -63,6 +66,12 @@ public final class MainConfig {
 
     // Command names
     private final CommandsConfig commandsConfig;
+
+    // GUI / transaction sounds
+    private final SoundSettings openCategorySound;
+    private final SoundSettings backToCategoriesSound;
+    private final SoundSettings guiClickSound;
+    private final SoundSettings sellSound;
 
     public MainConfig(FileConfiguration cfg) {
         this.buyingEnabled       = cfg.getBoolean("global.buying-enabled",      true);
@@ -123,6 +132,21 @@ public final class MainConfig {
 
         ConfigurationSection cmdSec = cfg.getConfigurationSection("commands");
         this.commandsConfig = parseCommandsConfig(cmdSec);
+
+        ConfigurationSection soundsSec = cfg.getConfigurationSection("sounds");
+        this.openCategorySound      = parseSound(soundsSec, "open-category",      "UI_BUTTON_CLICK",              1.0f, 1.2f);
+        this.backToCategoriesSound  = parseSound(soundsSec, "back-to-categories", "UI_BUTTON_CLICK",              1.0f, 0.8f);
+        this.guiClickSound          = parseSound(soundsSec, "gui-click",          "UI_BUTTON_CLICK",              0.8f, 1.0f);
+        this.sellSound              = parseSound(soundsSec, "sell",               "ENTITY_EXPERIENCE_ORB_PICKUP", 0.5f, 1.2f);
+    }
+
+    private static SoundSettings parseSound(ConfigurationSection sec, String key, String defaultSound, float defaultVolume, float defaultPitch) {
+        ConfigurationSection sub = sec != null ? sec.getConfigurationSection(key) : null;
+        boolean enabled = sub == null || sub.getBoolean("enabled", true);
+        String sound    = sub != null ? sub.getString("sound", defaultSound) : defaultSound;
+        float volume    = (float) (sub != null ? sub.getDouble("volume", defaultVolume) : defaultVolume);
+        float pitch     = (float) (sub != null ? sub.getDouble("pitch", defaultPitch) : defaultPitch);
+        return new SoundSettings(enabled, sound, volume, pitch);
     }
 
     private static CategoryGuiConfig parseCategoryGuiConfig(ConfigurationSection sec) {
@@ -171,6 +195,7 @@ public final class MainConfig {
         subs.put("quicksell",           "quicksell");
         subs.put("quicksell-hand",      "hand");
         subs.put("quicksell-inventory", "inventory");
+        subs.put("give",                  "give");
         if (subSec != null) {
             for (String key : subs.keySet()) {
                 String val = subSec.getString(key);
@@ -208,4 +233,8 @@ public final class MainConfig {
     public Map<ClickType, ClickAction> getClickActions()         { return clickActions; }
     public CategoryGuiConfig getCategoryGuiConfig()               { return categoryGuiConfig; }
     public CommandsConfig getCommandsConfig()                     { return commandsConfig; }
+    public SoundSettings getOpenCategorySound()                   { return openCategorySound; }
+    public SoundSettings getBackToCategoriesSound()               { return backToCategoriesSound; }
+    public SoundSettings getGuiClickSound()                       { return guiClickSound; }
+    public SoundSettings getSellSound()                           { return sellSound; }
 }

@@ -6,12 +6,15 @@ import me.usainsrht.basicshop.api.model.ShopCategory;
 import me.usainsrht.basicshop.config.CategoriesConfig;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.api.model.TransactionResult;
+import me.usainsrht.basicshop.util.ShopSounds;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import space.arim.morepaperlib.MorePaperLib;
+
+import java.util.List;
 
 /**
  * The main categories GUI — lists all shop categories and contains the QuickSell slot.
@@ -78,6 +81,7 @@ public final class CategoriesGui extends AbstractShopGui {
         // Category slot
         for (CategoriesConfig.CategoryEntry entry : cfg.getCategories()) {
             if (entry.slot() == slot) {
+                ShopSounds.play(player, configManager.getMainConfig().getOpenCategorySound());
                 shopAPI.getCategory(entry.id()).ifPresent(category ->
                         morePaperLib.scheduling().entitySpecificScheduler(player).run(
                                 () -> openCategory(player, category), null));
@@ -94,7 +98,7 @@ public final class CategoriesGui extends AbstractShopGui {
 
         if (hasCursorItem) {
             // Sell the cursor item immediately
-            ShopAPI.QuickSellResult result = new ShopAPI.QuickSellResult(false, 0, 0);
+            ShopAPI.QuickSellResult result = new ShopAPI.QuickSellResult(false, 0, 0, List.of());
             if (shopAPI instanceof ShopAPIImpl impl) {
                 var shopItemOpt = impl.getItemByMaterial(cursor.getType());
                 if (shopItemOpt.isPresent()) {
@@ -113,6 +117,7 @@ public final class CategoriesGui extends AbstractShopGui {
             }
         } else {
             // Open QuickSell inventory browser
+            ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
             morePaperLib.scheduling().entitySpecificScheduler(player).run(
                     () -> {
                         QuickSellGui qs = new QuickSellGui(configManager, shopAPI, morePaperLib, player);

@@ -1,18 +1,28 @@
 package me.usainsrht.basicshop.command;
 
 import me.usainsrht.basicshop.api.ShopAPI;
+import me.usainsrht.basicshop.api.model.ShopToolType;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.MainConfig;
 import me.usainsrht.basicshop.gui.CategoriesGui;
 import me.usainsrht.basicshop.gui.QuickSellGui;
+import me.usainsrht.basicshop.item.ShopToolFactory;
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import space.arim.morepaperlib.MorePaperLib;
+
+import java.util.Map;
 
 /**
  * Registers all BasicShop commands via the Paper Brigadier lifecycle API.
@@ -24,6 +34,7 @@ import space.arim.morepaperlib.MorePaperLib;
  *   /shop reload                      — reload configuration       [basicshop.admin.reload]
  *   /shop quicksell hand              — sell held item             [basicshop.quicksell.hand]
  *   /shop quicksell inventory         — sell all inventory items   [basicshop.quicksell.inventory]
+ *   /shop give &lt;player&gt; &lt;tool&gt; &lt;amount&gt; — give a shop tool        [basicshop.admin.give]
  * </pre>
  *
  * <p>Every sub-command with restricted access uses {@code .requires()} to guard execution.
@@ -35,12 +46,20 @@ public final class ShopCommand {
     private final Plugin plugin;
     private final ConfigManager configManager;
     private final ShopAPI shopAPI;
+    private final ShopToolFactory toolFactory;
     private final MorePaperLib morePaperLib;
 
-    public ShopCommand(Plugin plugin, ConfigManager configManager, ShopAPI shopAPI, MorePaperLib morePaperLib) {
+    public ShopCommand(
+            Plugin plugin,
+            ConfigManager configManager,
+            ShopAPI shopAPI,
+            ShopToolFactory toolFactory,
+            MorePaperLib morePaperLib
+    ) {
         this.plugin        = plugin;
         this.configManager = configManager;
         this.shopAPI       = shopAPI;
+        this.toolFactory   = toolFactory;
         this.morePaperLib  = morePaperLib;
     }
 
@@ -66,18 +85,28 @@ public final class ShopCommand {
 
     private com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> buildCommandTree(MainConfig.CommandsConfig cmdCfg) {
         return Commands.literal(cmdCfg.root())
-                .requires(src -> src.getSender() instanceof Player
-                        && src.getSender().hasPermission("basicshop.use"))
                 .executes(ctx -> {
-                    Player player = (Player) ctx.getSource().getSender();
+                    if (!(ctx.getSource().getSender() instanceof Player player)) {
+                        sendMessage(ctx.getSource().getSender(), "player-only");
+                        return 0;
+                    }
+                    if (!player.hasPermission("basicshop.use")) {
+                        sendMessage(player, "no-permission");
+                        return 0;
+                    }
                     openShop(player);
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(Commands.literal(cmdCfg.sub("help"))
-                        .requires(src -> src.getSender() instanceof Player
-                                && src.getSender().hasPermission("basicshop.use"))
                         .executes(ctx -> {
-                            Player player = (Player) ctx.getSource().getSender();
+                            if (!(ctx.getSource().getSender() instanceof Player player)) {
+                                sendMessage(ctx.getSource().getSender(), "player-only");
+                                return 0;
+                            }
+                            if (!player.hasPermission("basicshop.use")) {
+                                sendMessage(player, "no-permission");
+                                return 0;
+                            }
                             sendHelp(player, cmdCfg);
                             return Command.SINGLE_SUCCESS;
                         }))
@@ -91,29 +120,56 @@ public final class ShopCommand {
                             return Command.SINGLE_SUCCESS;
                         }))
                 .then(Commands.literal(cmdCfg.sub("quicksell"))
-                        .requires(src -> src.getSender() instanceof Player
-                                && src.getSender().hasPermission("basicshop.quicksell"))
                         .executes(ctx -> {
-                            Player player = (Player) ctx.getSource().getSender();
+                            if (!(ctx.getSource().getSender() instanceof Player player)) {
+                                sendMessage(ctx.getSource().getSender(), "player-only");
+                                return 0;
+                            }
+                            if (!player.hasPermission("basicshop.quicksell")) {
+                                sendMessage(player, "no-permission");
+                                return 0;
+                            }
                             openQuickSell(player);
                             return Command.SINGLE_SUCCESS;
                         })
                         .then(Commands.literal(cmdCfg.sub("quicksell-hand"))
-                                .requires(src -> src.getSender() instanceof Player
-                                        && src.getSender().hasPermission("basicshop.quicksell.hand"))
                                 .executes(ctx -> {
-                                    Player player = (Player) ctx.getSource().getSender();
+                                    if (!(ctx.getSource().getSender() instanceof Player player)) {
+                                        sendMessage(ctx.getSource().getSender(), "player-only");
+                                        return 0;
+                                    }
+                                    if (!player.hasPermission("basicshop.quicksell.hand")) {
+                                        sendMessage(player, "no-permission");
+                                        return 0;
+                                    }
                                     executeQuickSellHand(player);
                                     return Command.SINGLE_SUCCESS;
                                 }))
                         .then(Commands.literal(cmdCfg.sub("quicksell-inventory"))
-                                .requires(src -> src.getSender() instanceof Player
-                                        && src.getSender().hasPermission("basicshop.quicksell.inventory"))
                                 .executes(ctx -> {
-                                    Player player = (Player) ctx.getSource().getSender();
+                                    if (!(ctx.getSource().getSender() instanceof Player player)) {
+                                        sendMessage(ctx.getSource().getSender(), "player-only");
+                                        return 0;
+                                    }
+                                    if (!player.hasPermission("basicshop.quicksell.inventory")) {
+                                        sendMessage(player, "no-permission");
+                                        return 0;
+                                    }
                                     executeQuickSellInventory(player);
                                     return Command.SINGLE_SUCCESS;
                                 })))
+                .then(Commands.literal(cmdCfg.sub("give"))
+                        .requires(src -> src.getSender().hasPermission("basicshop.admin.give"))
+                        .then(Commands.argument("target", StringArgumentType.word())
+                                .then(Commands.argument("tool", StringArgumentType.word())
+                                        .suggests((ctx, builder) -> {
+                                            for (ShopToolType type : ShopToolType.values()) {
+                                                builder.suggest(type.getId());
+                                            }
+                                            return builder.buildFuture();
+                                        })
+                                        .then(Commands.argument("amount", IntegerArgumentType.integer(1, 64))
+                                                .executes(this::executeGive)))))
                 .build();
     }
 
@@ -146,6 +202,47 @@ public final class ShopCommand {
         if (player.hasPermission("basicshop.admin.reload")) {
             player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("reload") + "</gold> <gray>— Reload configuration"));
         }
+        if (player.hasPermission("basicshop.admin.give")) {
+            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("give") + " <player> <tool> <amount></gold> <gray>— Give a shop tool"));
+        }
+    }
+
+    private int executeGive(CommandContext<CommandSourceStack> ctx) {
+        CommandSender sender = ctx.getSource().getSender();
+        String targetName = StringArgumentType.getString(ctx, "target");
+        String toolId = StringArgumentType.getString(ctx, "tool");
+        int amount = IntegerArgumentType.getInteger(ctx, "amount");
+
+        Player target = Bukkit.getPlayerExact(targetName);
+        if (target == null) {
+            sendMessage(sender, "give-player-not-found");
+            return 0;
+        }
+
+        ShopToolType toolType = ShopToolType.fromId(toolId).orElse(null);
+        if (toolType == null) {
+            sendMessage(sender, "give-invalid-tool");
+            return 0;
+        }
+
+        ItemStack stack = toolFactory.create(toolType, amount);
+        Map<Integer, ItemStack> overflow = target.getInventory().addItem(stack);
+        overflow.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
+
+        String msg = configManager.getMainConfig().getMessage("give-success")
+                .replace("<amount>", String.valueOf(amount))
+                .replace("<tool>", toolType.getId())
+                .replace("<player>", target.getName());
+        sendRaw(sender, msg);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void sendMessage(CommandSender sender, String messageKey) {
+        sendRaw(sender, configManager.getMainConfig().getMessage(messageKey));
+    }
+
+    private void sendRaw(CommandSender sender, String message) {
+        sender.sendMessage(MM.deserialize(configManager.getMainConfig().getPrefix() + message));
     }
 
     private void executeQuickSellHand(Player player) {

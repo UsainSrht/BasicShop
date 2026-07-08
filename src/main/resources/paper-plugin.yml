@@ -43,9 +43,22 @@ permissions:
     description: Allows the player to reload the plugin configuration
     default: op
 
+  basicshop.admin.give:
+    description: Allows giving shop tools to players
+    default: op
+
+  basicshop.tools.staff:
+    description: Allows using the Money Staff
+    default: true
+
+  basicshop.tools.hoe:
+    description: Allows using the Money Hoe
+    default: true
+
   basicshop.admin:
     description: Grants all BasicShop admin permissions
     default: op
     children:
       basicshop.admin.reload: true
+      basicshop.admin.give: true
 

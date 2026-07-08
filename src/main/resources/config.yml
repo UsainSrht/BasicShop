@@ -17,6 +17,28 @@ commands:
     quicksell: quicksell
     quicksell-hand: hand
     quicksell-inventory: inventory
+    give: give
+
+# Shop tools — custom sell items given via /shop give
+tools:
+  money_staff:
+    material: BLAZE_ROD
+    name: "<gold>Money Staff"
+    lore:
+      - "<gray>Click a container to sell its contents."
+    # Force the enchantment glint without applying real enchantments
+    enchantment-glint-override: true
+  money_hoe:
+    material: GOLDEN_HOE
+    name: "<gold>Money Hoe"
+    lore:
+      - "<gray>Break mature crops to sell drops and replant."
+      - "<gray>Click air to toggle auto-sell."
+    enchants:
+      efficiency: 5
+      unbreaking: 3
+      fortune: 3
+      mending: 1
 
 # Global toggles
 global:
@@ -29,6 +51,29 @@ global:
   number-format: "#,##0.00"
   # When true, items are shown in a modern bordered layout (rows 2-5, 7 items per row)
   modern-item-listing: true
+
+# GUI and transaction sounds (Bukkit Sound enum names or namespaced keys like entity.experience_orb.pickup)
+sounds:
+  open-category:
+    enabled: true
+    sound: UI_BUTTON_CLICK
+    volume: 1.0
+    pitch: 1.2
+  back-to-categories:
+    enabled: true
+    sound: UI_BUTTON_CLICK
+    volume: 1.0
+    pitch: 0.8
+  gui-click:
+    enabled: true
+    sound: UI_BUTTON_CLICK
+    volume: 0.8
+    pitch: 1.0
+  sell:
+    enabled: true
+    sound: ENTITY_EXPERIENCE_ORB_PICKUP
+    volume: 0.5
+    pitch: 1.2
 
 # Player-facing messages (MiniMessage format)
 messages:
@@ -53,6 +98,15 @@ messages:
   no-sellable-items: "<yellow>You have no sellable items in your inventory."
   quicksell-hand-empty: "<yellow>You are not holding any item."
   quicksell-inventory-success: "<green>Sold all sellable items for a total of <gold><price></gold>."
+
+  tool-staff-line: "<green>You sold <white><amount>x <item></white> for <gold><price></gold> with Money Staff."
+  tool-hoe-success: "<green>Sold crop drops for <gold><price></gold> and replanted."
+  tool-hoe-autosell-on: "<green>Auto-sell enabled."
+  tool-hoe-autosell-off: "<yellow>Auto-sell disabled."
+
+  give-success: "<green>Gave <white><amount>x <tool></white> to <white><player></white>."
+  give-player-not-found: "<red>That player is not online."
+  give-invalid-tool: "<red>Unknown tool. Use <white>money_staff</white> or <white>money_hoe</white>."
 
   vault-unavailable: "<red>Economy provider is unavailable. Please contact an administrator."
 

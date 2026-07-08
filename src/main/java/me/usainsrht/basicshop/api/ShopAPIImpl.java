@@ -9,12 +9,18 @@ import me.usainsrht.basicshop.api.model.TransactionRecord;
 import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.api.model.TransactionType;
 import me.usainsrht.basicshop.config.ConfigManager;
+import me.usainsrht.basicshop.util.ShopSounds;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.UUID;
@@ -83,6 +89,7 @@ public final class ShopAPIImpl implements ShopAPI {
         economy.deposit(player, totalEarned);
 
         record(player, item, TransactionType.SELL, actualAmount, totalEarned);
+        playSellSound(player);
         return TransactionResult.SUCCESS;
     }
 
@@ -102,6 +109,7 @@ public final class ShopAPIImpl implements ShopAPI {
         economy.deposit(player, totalEarned);
 
         record(player, item, TransactionType.SELL, available, totalEarned);
+        playSellSound(player);
         return TransactionResult.SUCCESS;
     }
 
@@ -129,6 +137,7 @@ public final class ShopAPIImpl implements ShopAPI {
         economy.deposit(player, totalEarned);
 
         record(player, shopItem, TransactionType.SELL, amount, totalEarned);
+        playSellSound(player);
         return TransactionResult.SUCCESS;
     }
 
@@ -158,7 +167,98 @@ public final class ShopAPIImpl implements ShopAPI {
             }
         }
 
-        return totalAmount > 0 ? new QuickSellResult(true, totalAmount, totalEarned) : QuickSellResult.NOTHING;
+        if (totalAmount > 0) {
+            playSellSound(player);
+            return new QuickSellResult(true, totalAmount, totalEarned, List.of());
+        }
+        return QuickSellResult.NOTHING;
+    }
+
+    @Override
+    public QuickSellResult sellFromInventory(Player player, Inventory inventory) {
+        if (!economy.isAvailable())                return QuickSellResult.NOTHING;
+        if (!configManager.getMainConfig().isSellingEnabled()) return QuickSellResult.NOTHING;
+
+        Map<Material, long[]> totals = new LinkedHashMap<>();
+        int totalAmount = 0;
+        double totalEarned = 0;
+
+        for (int i = 0; i < inventory.getSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack == null || stack.getType().isAir()) continue;
+
+            Optional<ShopItem> shopItemOpt = getItemByMaterial(stack.getType());
+            if (shopItemOpt.isEmpty()) continue;
+
+            ShopItem shopItem = shopItemOpt.get();
+            OptionalDouble priceOpt = shopItem.getSellPrice();
+            if (priceOpt.isEmpty()) continue;
+
+            int amount = stack.getAmount();
+            inventory.setItem(i, null);
+
+            double earned = priceOpt.getAsDouble() * amount;
+            economy.deposit(player, earned);
+            record(player, shopItem, TransactionType.SELL, amount, earned);
+
+            Material material = stack.getType();
+            long[] line = totals.computeIfAbsent(material, m -> new long[2]);
+            line[0] += amount;
+            line[1] += Math.round(earned * 100);
+
+            totalAmount += amount;
+            totalEarned += earned;
+        }
+
+        if (totalAmount <= 0) return QuickSellResult.NOTHING;
+
+        playSellSound(player);
+
+        List<SoldMaterialLine> lines = new ArrayList<>();
+        for (Map.Entry<Material, long[]> entry : totals.entrySet()) {
+            lines.add(new SoldMaterialLine(
+                    entry.getKey(),
+                    (int) entry.getValue()[0],
+                    entry.getValue()[1] / 100.0
+            ));
+        }
+
+        return new QuickSellResult(true, totalAmount, totalEarned, List.copyOf(lines));
+    }
+
+    @Override
+    public QuickSellResult sellItemStacks(Player player, Collection<ItemStack> stacks) {
+        if (!economy.isAvailable())                return QuickSellResult.NOTHING;
+        if (!configManager.getMainConfig().isSellingEnabled()) return QuickSellResult.NOTHING;
+        if (stacks == null || stacks.isEmpty())    return QuickSellResult.NOTHING;
+
+        int totalAmount = 0;
+        double totalEarned = 0;
+
+        for (ItemStack stack : stacks) {
+            if (stack == null || stack.getType().isAir()) continue;
+
+            Optional<ShopItem> shopItemOpt = getItemByMaterial(stack.getType());
+            if (shopItemOpt.isEmpty()) continue;
+
+            ShopItem shopItem = shopItemOpt.get();
+            OptionalDouble priceOpt = shopItem.getSellPrice();
+            if (priceOpt.isEmpty()) continue;
+
+            int amount = stack.getAmount();
+            double earned = priceOpt.getAsDouble() * amount;
+            economy.deposit(player, earned);
+            record(player, shopItem, TransactionType.SELL, amount, earned);
+
+            totalAmount += amount;
+            totalEarned += earned;
+        }
+
+        if (totalAmount > 0) {
+            playSellSound(player);
+            return new QuickSellResult(true, totalAmount, totalEarned, List.of());
+        }
+        return QuickSellResult.NOTHING;
     }
 
     // -------------------------------------------------------------------------
@@ -191,6 +291,7 @@ public final class ShopAPIImpl implements ShopAPI {
     }
 
     /** Finds a ShopItem by its Bukkit Material across all categories. */
+    @Override
     public Optional<ShopItem> getItemByMaterial(Material material) {
         return getCategories().stream()
                 .flatMap(c -> c.getItems().stream())
@@ -269,5 +370,9 @@ public final class ShopAPIImpl implements ShopAPI {
 
         analyticsManager.record(record);
         transactionLogger.log(record);
+    }
+
+    private void playSellSound(Player player) {
+        ShopSounds.play(player, configManager.getMainConfig().getSellSound());
     }
 }

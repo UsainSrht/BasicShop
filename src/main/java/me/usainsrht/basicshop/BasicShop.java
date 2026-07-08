@@ -7,7 +7,9 @@ import me.usainsrht.basicshop.api.ShopAPIImpl;
 import me.usainsrht.basicshop.api.economy.VaultEconomyProvider;
 import me.usainsrht.basicshop.command.ShopCommand;
 import me.usainsrht.basicshop.config.ConfigManager;
+import me.usainsrht.basicshop.item.ShopToolFactory;
 import me.usainsrht.basicshop.listener.GuiListener;
+import me.usainsrht.basicshop.listener.ToolListener;
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -40,6 +42,7 @@ public final class BasicShop extends JavaPlugin {
     private AnalyticsManager analyticsManager;
     private TransactionLogger transactionLogger;
     private ShopAPIImpl shopAPI;
+    private ShopToolFactory toolFactory;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -73,12 +76,17 @@ public final class BasicShop extends JavaPlugin {
 
         // 5. API
         shopAPI = new ShopAPIImpl(configManager, economyProvider, analyticsManager, transactionLogger);
+        toolFactory = new ShopToolFactory(this, configManager.getToolsConfig());
 
         // 6. Listeners
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
+        getServer().getPluginManager().registerEvents(
+                new ToolListener(configManager, shopAPI, toolFactory, morePaperLib),
+                this
+        );
 
         // 7. Commands (lifecycle — must be called before onEnable returns for COMMANDS event)
-        new ShopCommand(this, configManager, shopAPI, morePaperLib).register();
+        new ShopCommand(this, configManager, shopAPI, toolFactory, morePaperLib).register();
 
         // 8. bStats
         initMetrics();

@@ -6,6 +6,7 @@ import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.QuickSellConfig;
+import me.usainsrht.basicshop.util.ShopSounds;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -126,6 +127,7 @@ public final class QuickSellGui extends AbstractShopGui {
         QuickSellConfig cfg = configManager.getQuickSellConfig();
 
         if (slot == cfg.getCloseSlot()) {
+            ShopSounds.play(player, configManager.getMainConfig().getBackToCategoriesSound());
             if (cfg.isCloseReturnsToCategories()) {
                 morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                     CategoriesGui categories = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
@@ -138,6 +140,7 @@ public final class QuickSellGui extends AbstractShopGui {
         }
 
         if (slot == cfg.getSellAllSlot()) {
+            ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
             ShopAPI.QuickSellResult result = shopAPI.quickSellInventory(player);
             if (result.anySuccess()) {
                 String msg = configManager.getMainConfig().getPrefix()

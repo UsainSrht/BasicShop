@@ -46,7 +46,7 @@ public final class QuickSellConfig {
         this.closeSlot                  = close != null ? close.getInt("slot", 45) : 45;
         this.closeMaterial              = parseMaterial(close != null ? close.getString("material") : null, Material.BARRIER);
         this.closeName                  = close != null ? close.getString("name", "<gray>\u2717 Close") : "<gray>\u2717 Close";
-        this.closeReturnsToCategories   = close != null && close.getBoolean("return-to-categories", false);
+        this.closeReturnsToCategories   = close != null && close.getBoolean("return-to-categories", true);
 
         ConfigurationSection sellAll = cfg.getConfigurationSection("gui.sell-all-button");
         this.sellAllSlot     = sellAll != null ? sellAll.getInt("slot", 49) : 49;

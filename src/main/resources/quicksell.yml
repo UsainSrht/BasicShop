@@ -7,9 +7,9 @@ gui:
   close-button:
     slot: 45
     material: BARRIER
-    name: "<gray>\u2717 Close"
+    name: "<gray>\u2717 Back to Categories"
     # When true, clicking this button opens the main categories GUI instead of closing the inventory.
-    return-to-categories: false
+    return-to-categories: true
 
   sell-all-button:
     slot: 49

@@ -28,6 +28,7 @@ public final class ConfigManager {
     private final Plugin plugin;
 
     private MainConfig       mainConfig;
+    private ToolsConfig      toolsConfig;
     private CategoriesConfig categoriesConfig;
     private QuickSellConfig  quickSellConfig;
     private List<ShopCategory> categories;
@@ -55,10 +56,14 @@ public final class ConfigManager {
             plugin.reloadConfig();
             FileConfiguration mainCfg = plugin.getConfig();
             this.mainConfig = new MainConfig(mainCfg);
+            this.toolsConfig = new ToolsConfig(mainCfg);
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Could not load config.yml!", e);
             if (this.mainConfig == null) {
                 this.mainConfig = new MainConfig(new YamlConfiguration());
+            }
+            if (this.toolsConfig == null) {
+                this.toolsConfig = new ToolsConfig(new YamlConfiguration());
             }
         }
 
@@ -220,6 +225,7 @@ public final class ConfigManager {
     // -------------------------------------------------------------------------
 
     public MainConfig getMainConfig()             { return mainConfig; }
+    public ToolsConfig getToolsConfig()           { return toolsConfig; }
     public CategoriesConfig getCategoriesConfig() { return categoriesConfig; }
     public QuickSellConfig getQuickSellConfig()   { return quickSellConfig; }
     public List<ShopCategory> getCategories()     { return categories; }

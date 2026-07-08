@@ -4,8 +4,12 @@ import me.usainsrht.basicshop.api.model.ShopCategory;
 import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.TransactionRecord;
 import me.usainsrht.basicshop.api.model.TransactionResult;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,6 +57,16 @@ public interface ShopAPI {
      */
     QuickSellResult quickSellInventory(Player player);
 
+    /**
+     * Sells every sellable item in the given inventory and pays the player.
+     */
+    QuickSellResult sellFromInventory(Player player, Inventory inventory);
+
+    /**
+     * Sells the given item stacks virtually (no inventory removal) and pays the player.
+     */
+    QuickSellResult sellItemStacks(Player player, Collection<ItemStack> stacks);
+
     // -------------------------------------------------------------------------
     // Catalogue
     // -------------------------------------------------------------------------
@@ -72,6 +86,9 @@ public interface ShopAPI {
      * or empty if the item is not in any category.
      */
     Optional<ShopCategory> getCategoryForItem(ShopItem item);
+
+    /** Finds a {@link ShopItem} by its Bukkit material across all categories. */
+    Optional<ShopItem> getItemByMaterial(Material material);
 
     // -------------------------------------------------------------------------
     // Global toggles
@@ -95,7 +112,14 @@ public interface ShopAPI {
     // Inner result type for quickSellInventory
     // -------------------------------------------------------------------------
 
-    record QuickSellResult(boolean anySuccess, int totalAmount, double totalEarned) {
-        public static final QuickSellResult NOTHING = new QuickSellResult(false, 0, 0);
+    record SoldMaterialLine(Material material, int amount, double earned) {}
+
+    record QuickSellResult(
+            boolean anySuccess,
+            int totalAmount,
+            double totalEarned,
+            List<SoldMaterialLine> lines
+    ) {
+        public static final QuickSellResult NOTHING = new QuickSellResult(false, 0, 0, List.of());
     }
 }

@@ -6,6 +6,7 @@ import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.MainConfig;
+import me.usainsrht.basicshop.util.ShopSounds;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -183,6 +184,7 @@ public final class CategoryGui extends AbstractShopGui {
         ClickType type = event.getClick();
 
         if (slot == slotBack) {
+            ShopSounds.play(player, configManager.getMainConfig().getBackToCategoriesSound());
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 CategoriesGui cg = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
                 player.openInventory(cg.getInventory());
@@ -191,6 +193,7 @@ public final class CategoryGui extends AbstractShopGui {
         }
 
         if (slot == slotPrev && page > 0) {
+            ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 CategoryGui prev = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page - 1);
                 player.openInventory(prev.getInventory());
@@ -201,6 +204,7 @@ public final class CategoryGui extends AbstractShopGui {
         if (slot == slotNext) {
             int totalPages = Math.max(1, (int) Math.ceil((double) category.getItems().size() / pageSize));
             if (page < totalPages - 1) {
+                ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
                 morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                     CategoryGui next = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page + 1);
                     player.openInventory(next.getInventory());
