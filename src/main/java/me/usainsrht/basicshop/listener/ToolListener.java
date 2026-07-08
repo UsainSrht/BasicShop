@@ -77,7 +77,9 @@ public final class ToolListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
-        if (toolFactory.isShopTool(event.getItemInHand())) {
+        ShopToolType type = toolFactory.getToolType(event.getItemInHand());
+        //hoe tilling also fires blockplaceevent 
+        if (type == ShopToolType.MONEY_STAFF) {
             event.setCancelled(true);
         }
     }
