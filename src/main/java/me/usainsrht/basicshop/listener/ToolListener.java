@@ -84,42 +84,10 @@ public final class ToolListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
-        ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
-        ShopToolType type = toolFactory.getToolType(tool);
-        if (type == null) return;
-
-        if (type == ShopToolType.MONEY_STAFF) {
-            event.setCancelled(true);
-            return;
-        }
-
-        if (type == ShopToolType.MONEY_HOE && event.getBlock().getBlockData() instanceof Ageable) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onToolInteract(PlayerInteractEvent event) {
-        ItemStack item = event.getItem();
-        ShopToolType type = toolFactory.getToolType(item);
-        if (type == null) return;
-
-        Action action = event.getAction();
-        if (type == ShopToolType.MONEY_STAFF) {
-            if (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK
-                    || action == Action.LEFT_CLICK_AIR || action == Action.RIGHT_CLICK_AIR
-                    || action == Action.PHYSICAL) {
-                event.setCancelled(true);
-            }
-            return;
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onStaffUse(PlayerInteractEvent event) {
         if (!event.hasBlock() || !event.hasItem()) return;
+        if (!event.getAction().isRightClick()) return;
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         ItemStack item = event.getItem();
@@ -183,7 +151,7 @@ public final class ToolListener implements Listener {
         player.sendActionBar(MM.deserialize(prefix + configManager.getMainConfig().getMessage(key)));
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onHoeBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         ItemStack tool = player.getInventory().getItemInMainHand();
