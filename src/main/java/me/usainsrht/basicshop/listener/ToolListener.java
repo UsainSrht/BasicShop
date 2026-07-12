@@ -160,7 +160,10 @@ public final class ToolListener implements Listener {
 
         Block block = event.getBlock();
         if (!(block.getBlockData() instanceof Ageable)) return;
-        if (!isFullyGrown(block)) return;
+        if (!isFullyGrown(block)) {
+            event.setCancelled(true);
+            return;
+        }
 
         event.setCancelled(true);
         event.setDropItems(false);
@@ -235,9 +238,10 @@ public final class ToolListener implements Listener {
     }
 
     private static boolean isFullyGrown(Block block) {
+        //allow if age is 1 below maximum age
         BlockData data = block.getBlockData();
         if (data instanceof Ageable ageable) {
-            return ageable.getAge() >= ageable.getMaximumAge();
+            return ageable.getAge() >= ageable.getMaximumAge() - 1;
         }
         return false;
     }
