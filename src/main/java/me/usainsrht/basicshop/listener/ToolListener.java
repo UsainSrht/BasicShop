@@ -58,6 +58,24 @@ public final class ToolListener implements Listener {
             Material.CARROT
     );
 
+    /**
+     * Replantable farm crops handled by the money hoe. Not every {@link Ageable} block is a crop
+     * (e.g. cactus, sugar cane, and bamboo also implement Ageable but should break normally).
+     */
+    private static final Set<Material> MONEY_HOE_CROPS = Set.of(
+            Material.WHEAT,
+            Material.CARROTS,
+            Material.POTATOES,
+            Material.BEETROOTS,
+            Material.NETHER_WART,
+            Material.MELON_STEM,
+            Material.PUMPKIN_STEM,
+            Material.COCOA,
+            Material.SWEET_BERRY_BUSH,
+            Material.TORCHFLOWER_CROP,
+            Material.PITCHER_CROP
+    );
+
     private final ConfigManager configManager;
     private final ShopAPI shopAPI;
     private final ShopToolFactory toolFactory;
@@ -131,13 +149,20 @@ public final class ToolListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    /**
+     * Paper fires {@link PlayerInteractEvent} as cancelled for air clicks where vanilla does
+     * nothing (e.g. right-click air with a hoe), so {@code ignoreCancelled} must be false.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
     public void onHoeToggle(PlayerInteractEvent event) {
         Action action = event.getAction();
         if (action != Action.RIGHT_CLICK_AIR && action != Action.LEFT_CLICK_AIR) return;
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         ItemStack item = event.getItem();
+        if (item == null || item.getType().isAir()) {
+            item = event.getPlayer().getInventory().getItemInMainHand();
+        }
         if (toolFactory.getToolType(item) != ShopToolType.MONEY_HOE) return;
 
         Player player = event.getPlayer();
@@ -159,7 +184,7 @@ public final class ToolListener implements Listener {
         if (!player.hasPermission("basicshop.tools.hoe")) return;
 
         Block block = event.getBlock();
-        if (!(block.getBlockData() instanceof Ageable)) return;
+        if (!MONEY_HOE_CROPS.contains(block.getType())) return;
         if (!isFullyGrown(block)) {
             event.setCancelled(true);
             return;
