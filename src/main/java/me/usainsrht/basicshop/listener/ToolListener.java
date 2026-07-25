@@ -156,7 +156,7 @@ public final class ToolListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
     public void onHoeToggle(PlayerInteractEvent event) {
         Action action = event.getAction();
-        if (action != Action.RIGHT_CLICK_AIR && action != Action.LEFT_CLICK_AIR) return;
+        if (action != Action.RIGHT_CLICK_AIR) return;
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         ItemStack item = event.getItem();
