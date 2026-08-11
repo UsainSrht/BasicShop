@@ -44,14 +44,18 @@ import java.util.Set;
 /**
  * Handles Money Staff and Money Hoe interactions.
  *
- * <p>Restrictions run at HIGH priority; sell/replant logic runs at MONITOR and
+ * <p>
+ * Restrictions run at HIGH priority; sell/replant logic runs at MONITOR and
  * intentionally observes cancelled hoe breaks.
  */
 public final class ToolListener implements Listener {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
-    /** Drop types that cost one item to replant when auto-selling (replaces legacy name substring checks). */
+    /**
+     * Drop types that cost one item to replant when auto-selling (replaces legacy
+     * name substring checks).
+     */
     private static final Set<Material> REPLANT_COST_DROPS = Set.of(
             Material.WHEAT_SEEDS,
             Material.BEETROOT_SEEDS,
@@ -59,12 +63,13 @@ public final class ToolListener implements Listener {
             Material.PUMPKIN_SEEDS,
             Material.NETHER_WART,
             Material.POTATO,
-            Material.CARROT
-    );
+            Material.CARROT);
 
     /**
-     * Replantable farm crops handled by the money hoe. Not every {@link Ageable} block is a crop
-     * (e.g. cactus, sugar cane, and bamboo also implement Ageable but should break normally).
+     * Replantable farm crops handled by the money hoe. Not every {@link Ageable}
+     * block is a crop
+     * (e.g. cactus, sugar cane, and bamboo also implement Ageable but should break
+     * normally).
      */
     private static final Set<Material> MONEY_HOE_CROPS = Set.of(
             Material.WHEAT,
@@ -77,8 +82,7 @@ public final class ToolListener implements Listener {
             Material.COCOA,
             Material.SWEET_BERRY_BUSH,
             Material.TORCHFLOWER_CROP,
-            Material.PITCHER_CROP
-    );
+            Material.PITCHER_CROP);
 
     private final ConfigManager configManager;
     private final ShopAPI shopAPI;
@@ -89,8 +93,7 @@ public final class ToolListener implements Listener {
             ConfigManager configManager,
             ShopAPI shopAPI,
             ShopToolFactory toolFactory,
-            MorePaperLib morePaperLib
-    ) {
+            MorePaperLib morePaperLib) {
         this.configManager = configManager;
         this.shopAPI = shopAPI;
         this.toolFactory = toolFactory;
@@ -100,7 +103,7 @@ public final class ToolListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         ShopToolType type = toolFactory.getToolType(event.getItemInHand());
-        //hoe tilling also fires blockplaceevent 
+        // hoe tilling also fires blockplaceevent
         if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF) {
             event.setCancelled(true);
         }
@@ -108,24 +111,32 @@ public final class ToolListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onStaffUse(PlayerInteractEvent event) {
-        if (!event.hasBlock() || !event.hasItem()) return;
-        if (!event.getAction().isRightClick()) return;
-        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (!event.hasBlock() || !event.hasItem())
+            return;
+        if (!event.getAction().isRightClick())
+            return;
+        if (event.getHand() != EquipmentSlot.HAND)
+            return;
 
         ItemStack item = event.getItem();
-        if (toolFactory.getToolType(item) != ShopToolType.MONEY_STAFF) return;
-
-        Player player = event.getPlayer();
-        if (!player.hasPermission("basicshop.tools.staff")) return;
-        if (player.hasCooldown(item)) return;
+        if (toolFactory.getToolType(item) != ShopToolType.MONEY_STAFF)
+            return;
 
         event.setCancelled(true);
 
+        Player player = event.getPlayer();
+        if (!player.hasPermission("basicshop.tools.staff"))
+            return;
+        if (player.hasCooldown(item))
+            return;
+
         Block block = event.getClickedBlock();
-        if (block == null) return;
+        if (block == null)
+            return;
 
         BlockState state = block.getState();
-        if (!(state instanceof Container)) return;
+        if (!(state instanceof Container))
+            return;
 
         ToolsConfig.ToolDefinition staffDef = configManager.getToolsConfig().get(ShopToolType.MONEY_STAFF);
         if (staffDef != null && staffDef.cooldown() != null && staffDef.cooldown().isCooldownActive()) {
@@ -135,30 +146,37 @@ public final class ToolListener implements Listener {
         Location location = block.getLocation();
         morePaperLib.scheduling().regionSpecificScheduler(location).runDelayed(
                 () -> sellItemsInBlock(player, block),
-                1L
-        );
+                1L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSortingStaffUse(PlayerInteractEvent event) {
-        if (!event.hasBlock() || !event.hasItem()) return;
-        if (!event.getAction().isRightClick()) return;
-        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (!event.hasBlock() || !event.hasItem())
+            return;
+        if (!event.getAction().isRightClick())
+            return;
+        if (event.getHand() != EquipmentSlot.HAND)
+            return;
 
         ItemStack item = event.getItem();
-        if (toolFactory.getToolType(item) != ShopToolType.SORTING_STAFF) return;
+        if (toolFactory.getToolType(item) != ShopToolType.SORTING_STAFF)
+            return;
 
         Player player = event.getPlayer();
-        if (!player.hasPermission("basicshop.tools.sorting_staff")) return;
-        if (player.hasCooldown(item)) return;
+        if (!player.hasPermission("basicshop.tools.sorting_staff"))
+            return;
+        if (player.hasCooldown(item))
+            return;
 
         event.setCancelled(true);
 
         Block block = event.getClickedBlock();
-        if (block == null) return;
+        if (block == null)
+            return;
 
         BlockState state = block.getState();
-        if (!(state instanceof Container)) return;
+        if (!(state instanceof Container))
+            return;
 
         ToolsConfig.ToolDefinition sortingDef = configManager.getToolsConfig().get(ShopToolType.SORTING_STAFF);
         if (sortingDef != null && sortingDef.cooldown() != null && sortingDef.cooldown().isCooldownActive()) {
@@ -167,7 +185,8 @@ public final class ToolListener implements Listener {
 
         Location location = block.getLocation();
         morePaperLib.scheduling().regionSpecificScheduler(location).run(() -> {
-            if (!player.isOnline()) return;
+            if (!player.isOnline())
+                return;
             BlockState currentState = block.getState();
             if (currentState instanceof Container currentContainer) {
                 boolean sorted = me.usainsrht.basicshop.sorting.ContainerSorter.sortContainer(player, currentContainer);
@@ -179,13 +198,16 @@ public final class ToolListener implements Listener {
     }
 
     private void sellItemsInBlock(Player player, Block block) {
-        if (!player.isOnline()) return;
+        if (!player.isOnline())
+            return;
 
         BlockState state = block.getState();
-        if (!(state instanceof Container container)) return;
+        if (!(state instanceof Container container))
+            return;
 
         ShopAPI.QuickSellResult result = shopAPI.sellFromInventory(player, container.getInventory());
-        if (!result.anySuccess()) return;
+        if (!result.anySuccess())
+            return;
 
         for (ShopAPI.SoldMaterialLine line : result.lines()) {
             ItemStack lineStack = new ItemStack(line.material(), line.amount());
@@ -199,24 +221,31 @@ public final class ToolListener implements Listener {
     }
 
     /**
-     * Paper fires {@link PlayerInteractEvent} as cancelled for air clicks where vanilla does
-     * nothing (e.g. right-click air with a hoe), so {@code ignoreCancelled} must be false.
+     * Paper fires {@link PlayerInteractEvent} as cancelled for air clicks where
+     * vanilla does
+     * nothing (e.g. right-click air with a hoe), so {@code ignoreCancelled} must be
+     * false.
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
     public void onHoeToggle(PlayerInteractEvent event) {
         Action action = event.getAction();
-        if (action != Action.RIGHT_CLICK_AIR) return;
-        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (action != Action.RIGHT_CLICK_AIR)
+            return;
+        if (event.getHand() != EquipmentSlot.HAND)
+            return;
 
         ItemStack item = event.getItem();
         if (item == null || item.getType().isAir()) {
             item = event.getPlayer().getInventory().getItemInMainHand();
         }
-        if (toolFactory.getToolType(item) != ShopToolType.MONEY_HOE) return;
+        if (toolFactory.getToolType(item) != ShopToolType.MONEY_HOE)
+            return;
 
         Player player = event.getPlayer();
-        if (!player.hasPermission("basicshop.tools.hoe")) return;
-        if (player.hasCooldown(item)) return;
+        if (!player.hasPermission("basicshop.tools.hoe"))
+            return;
+        if (player.hasCooldown(item))
+            return;
 
         boolean autoSellEnabled = toolFactory.toggleAutoSell(item);
         player.getInventory().setItemInMainHand(item);
@@ -234,11 +263,14 @@ public final class ToolListener implements Listener {
     public void onHoeBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         ItemStack tool = player.getInventory().getItemInMainHand();
-        if (toolFactory.getToolType(tool) != ShopToolType.MONEY_HOE) return;
-        if (!player.hasPermission("basicshop.tools.hoe")) return;
+        if (toolFactory.getToolType(tool) != ShopToolType.MONEY_HOE)
+            return;
+        if (!player.hasPermission("basicshop.tools.hoe"))
+            return;
 
         Block block = event.getBlock();
-        if (!MONEY_HOE_CROPS.contains(block.getType())) return;
+        if (!MONEY_HOE_CROPS.contains(block.getType()))
+            return;
         if (!isFullyGrown(block)) {
             event.setCancelled(true);
             return;
@@ -266,11 +298,13 @@ public final class ToolListener implements Listener {
         int totalSold = 0;
 
         for (ItemStack drop : drops) {
-            if (drop == null || drop.getType().isAir()) continue;
+            if (drop == null || drop.getType().isAir())
+                continue;
 
             ItemStack adjusted = drop.clone();
             applyReplantCost(adjusted);
-            if (adjusted.getAmount() <= 0) continue;
+            if (adjusted.getAmount() <= 0)
+                continue;
 
             Optional<ShopItem> shopItemOpt = shopAPI.getItemByMaterial(adjusted.getType());
             if (shopItemOpt.isEmpty()) {
@@ -302,7 +336,8 @@ public final class ToolListener implements Listener {
 
     private static void giveDrops(Player player, Block block, Collection<ItemStack> drops) {
         for (ItemStack drop : drops) {
-            if (drop == null || drop.getType().isAir()) continue;
+            if (drop == null || drop.getType().isAir())
+                continue;
             Map<Integer, ItemStack> leftover = player.getInventory().addItem(drop.clone());
             for (ItemStack overflow : leftover.values()) {
                 block.getWorld().dropItemNaturally(block.getLocation(), overflow);
@@ -311,12 +346,13 @@ public final class ToolListener implements Listener {
     }
 
     private static void applyReplantCost(ItemStack drop) {
-        if (!REPLANT_COST_DROPS.contains(drop.getType())) return;
+        if (!REPLANT_COST_DROPS.contains(drop.getType()))
+            return;
         drop.setAmount(drop.getAmount() - 1);
     }
 
     private static boolean isFullyGrown(Block block) {
-        //allow if age is 1 below maximum age
+        // allow if age is 1 below maximum age
         BlockData data = block.getBlockData();
         if (data instanceof Ageable ageable) {
             return ageable.getAge() >= ageable.getMaximumAge() - 1;
@@ -337,7 +373,8 @@ public final class ToolListener implements Listener {
         BlockData finalData = replantData;
         morePaperLib.scheduling().regionSpecificScheduler(location).run(() -> {
             Block replantBlock = location.getBlock();
-            if (replantBlock.getType() != Material.AIR && replantBlock.getType() != cropType) return;
+            if (replantBlock.getType() != Material.AIR && replantBlock.getType() != cropType)
+                return;
             replantBlock.setType(cropType, false);
             replantBlock.setBlockData(finalData, false);
         });
