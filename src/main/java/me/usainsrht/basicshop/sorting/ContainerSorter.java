@@ -284,7 +284,7 @@ public final class ContainerSorter {
     /**
      * Ore Profile Progression Grid:
      * Groups crafting lifecycles (e.g., Raw -> Ingot -> Nugget -> Block).
-     * Reserves empty space (null) for missing stages in a sequence.
+     * Sequentially places all items for a mineral progression chain together in row layout.
      */
     private static void placeProgressionGrid(ItemStack[][] grid, boolean[][] locked, List<ItemStack> remaining, int rows, int cols) {
         Map<ProgressionChain, List<ItemStack>> chainMap = new EnumMap<>(ProgressionChain.class);
@@ -299,46 +299,39 @@ public final class ContainerSorter {
         }
 
         int currentRow = 0;
+        int currentCol = 0;
+
         for (ProgressionChain chain : ProgressionChain.values()) {
             if (chain == ProgressionChain.NONE) continue;
             List<ItemStack> chainItems = chainMap.get(chain);
             if (chainItems == null || chainItems.isEmpty()) continue;
 
-            while (currentRow < rows && rowIsOccupied(locked, currentRow, cols)) {
-                currentRow++;
-            }
-            if (currentRow >= rows) {
-                // Grid full, put leftovers back
-                remaining.addAll(chainItems);
-                continue;
-            }
+            // Sort chain items by progression stage ascending
+            chainItems.sort((a, b) -> Integer.compare(ItemCategorizer.getProgressionStage(a.getType()), ItemCategorizer.getProgressionStage(b.getType())));
 
-            // Progression stages: 0=Raw, 1=Ingot/Gem, 2=Nugget, 3=Block
-            ItemStack[] stageArray = new ItemStack[4];
             for (ItemStack item : chainItems) {
-                int stage = ItemCategorizer.getProgressionStage(item.getType());
-                if (stage >= 0 && stage < 4 && stageArray[stage] == null) {
-                    stageArray[stage] = item;
-                } else {
-                    remaining.add(item); // Extra stacks placed in bulk
-                }
-            }
-
-            // Reserve space for progression lifecycle:
-            // Place present items at their stage column, leaving null for missing stages
-            for (int stage = 0; stage < 4; stage++) {
-                int col = stage;
-                if (col < cols && !locked[currentRow][col]) {
-                    if (stageArray[stage] != null) {
-                        grid[currentRow][col] = stageArray[stage];
-                        locked[currentRow][col] = true;
-                    } else {
-                        // Reserved empty slot
-                        locked[currentRow][col] = true;
+                while (currentRow < rows) {
+                    while (currentCol < cols && (locked[currentRow][currentCol] || grid[currentRow][currentCol] != null)) {
+                        currentCol++;
                     }
+                    if (currentCol < cols) break;
+                    currentRow++;
+                    currentCol = 0;
+                }
+
+                if (currentRow >= rows) {
+                    remaining.add(item);
+                    continue;
+                }
+
+                grid[currentRow][currentCol] = item;
+                locked[currentRow][currentCol] = true;
+                currentCol++;
+                if (currentCol >= cols) {
+                    currentRow++;
+                    currentCol = 0;
                 }
             }
-            currentRow++;
         }
     }
 
@@ -465,7 +458,42 @@ public final class ContainerSorter {
         Material matA = a.getType();
         Material matB = b.getType();
 
-        // 1. Wood Items comparison (variant rank -> species -> name -> amount)
+        Category catA = ItemCategorizer.getCategory(matA);
+        Category catB = ItemCategorizer.getCategory(matB);
+
+        // 1. Equipment sorting: MaterialTier weight DESCENDING -> EquipmentType column ASCENDING -> Name -> Amount
+        boolean equipA = (catA == Category.EQUIPMENT);
+        boolean equipB = (catB == Category.EQUIPMENT);
+        if (equipA && equipB) {
+            MaterialTier tierA = ItemCategorizer.getMaterialTier(matA);
+            MaterialTier tierB = ItemCategorizer.getMaterialTier(matB);
+            if (tierA != tierB) {
+                return Integer.compare(tierB.getWeight(), tierA.getWeight()); // Descending (Netherite > Diamond > Iron > Gold > Copper > Stone > Wood)
+            }
+            EquipmentType typeA = ItemCategorizer.getEquipmentType(matA);
+            EquipmentType typeB = ItemCategorizer.getEquipmentType(matB);
+            if (typeA.getColumnIndex() != typeB.getColumnIndex()) {
+                return Integer.compare(typeA.getColumnIndex(), typeB.getColumnIndex());
+            }
+        }
+
+        // 2. Mineral Progression sorting: ProgressionChain order ASCENDING -> ProgressionStage ASCENDING -> Name -> Amount
+        boolean progA = (catA == Category.MINERAL_PROGRESSION);
+        boolean progB = (catB == Category.MINERAL_PROGRESSION);
+        if (progA && progB) {
+            ProgressionChain chainA = ItemCategorizer.getProgressionChain(matA);
+            ProgressionChain chainB = ItemCategorizer.getProgressionChain(matB);
+            if (chainA != chainB) {
+                return Integer.compare(chainA.getOrder(), chainB.getOrder()); // Netherite -> Diamond -> Emerald -> Gold -> Iron -> Copper...
+            }
+            int stageA = ItemCategorizer.getProgressionStage(matA);
+            int stageB = ItemCategorizer.getProgressionStage(matB);
+            if (stageA != stageB) {
+                return Integer.compare(stageA, stageB); // Ore -> Raw -> Raw Block -> Ingot -> Nugget -> Block
+            }
+        }
+
+        // 3. Wood Items comparison (variant rank -> species -> name -> amount)
         boolean woodA = ItemCategorizer.isWood(matA);
         boolean woodB = ItemCategorizer.isWood(matB);
         if (woodA && woodB) {
@@ -481,7 +509,7 @@ public final class ContainerSorter {
             }
         }
 
-        // 2. Colored Blocks comparison (family rank -> color index -> name -> amount)
+        // 4. Colored Blocks comparison (family rank -> color index -> name -> amount)
         boolean colA = ItemCategorizer.isColoredBlock(matA);
         boolean colB = ItemCategorizer.isColoredBlock(matB);
         if (colA && colB) {
@@ -497,7 +525,7 @@ public final class ContainerSorter {
             }
         }
 
-        // 3. Stone Variants comparison (variant rank -> name -> amount)
+        // 5. Stone Variants comparison (variant rank -> name -> amount)
         boolean stoneA = ItemCategorizer.isStone(matA);
         boolean stoneB = ItemCategorizer.isStone(matB);
         if (stoneA && stoneB) {
@@ -508,11 +536,11 @@ public final class ContainerSorter {
             }
         }
 
-        // 4. Default material name comparison
+        // 6. Default material name comparison
         int matCmp = matA.name().compareTo(matB.name());
         if (matCmp != 0) return matCmp;
 
-        // 5. Stack size descending
+        // 7. Stack size descending
         return Integer.compare(b.getAmount(), a.getAmount());
     }
 

@@ -127,6 +127,11 @@ public final class ToolListener implements Listener {
         BlockState state = block.getState();
         if (!(state instanceof Container)) return;
 
+        ToolsConfig.ToolDefinition staffDef = configManager.getToolsConfig().get(ShopToolType.MONEY_STAFF);
+        if (staffDef != null && staffDef.cooldown() != null && staffDef.cooldown().isCooldownActive()) {
+            player.setCooldown(item, (int) Math.round(staffDef.cooldown().durationSeconds() * 20.0));
+        }
+
         Location location = block.getLocation();
         morePaperLib.scheduling().regionSpecificScheduler(location).runDelayed(
                 () -> sellItemsInBlock(player, block),
@@ -154,6 +159,11 @@ public final class ToolListener implements Listener {
 
         BlockState state = block.getState();
         if (!(state instanceof Container)) return;
+
+        ToolsConfig.ToolDefinition sortingDef = configManager.getToolsConfig().get(ShopToolType.SORTING_STAFF);
+        if (sortingDef != null && sortingDef.cooldown() != null && sortingDef.cooldown().isCooldownActive()) {
+            player.setCooldown(item, (int) Math.round(sortingDef.cooldown().durationSeconds() * 20.0));
+        }
 
         Location location = block.getLocation();
         morePaperLib.scheduling().regionSpecificScheduler(location).run(() -> {
@@ -211,6 +221,11 @@ public final class ToolListener implements Listener {
         boolean autoSellEnabled = toolFactory.toggleAutoSell(item);
         player.getInventory().setItemInMainHand(item);
 
+        ToolsConfig.ToolDefinition hoeDef = configManager.getToolsConfig().get(ShopToolType.MONEY_HOE);
+        if (hoeDef != null && hoeDef.cooldown() != null && hoeDef.cooldown().isCooldownActive()) {
+            player.setCooldown(item, (int) Math.round(hoeDef.cooldown().durationSeconds() * 20.0));
+        }
+
         String key = autoSellEnabled ? "tool-hoe-autosell-on" : "tool-hoe-autosell-off";
         configManager.getMessagesConfig().send(player, key);
     }
@@ -221,10 +236,6 @@ public final class ToolListener implements Listener {
         ItemStack tool = player.getInventory().getItemInMainHand();
         if (toolFactory.getToolType(tool) != ShopToolType.MONEY_HOE) return;
         if (!player.hasPermission("basicshop.tools.hoe")) return;
-        if (player.hasCooldown(tool)) {
-            event.setCancelled(true);
-            return;
-        }
 
         Block block = event.getBlock();
         if (!MONEY_HOE_CROPS.contains(block.getType())) return;
@@ -243,11 +254,6 @@ public final class ToolListener implements Listener {
             handleAutoSell(player, block, drops);
         } else {
             giveDrops(player, block, drops);
-        }
-
-        ToolsConfig.ToolDefinition hoeDef = configManager.getToolsConfig().get(ShopToolType.MONEY_HOE);
-        if (hoeDef != null && hoeDef.cooldown() != null && hoeDef.cooldown().isCooldownActive()) {
-            player.setCooldown(tool, (int) Math.round(hoeDef.cooldown().durationSeconds() * 20.0));
         }
 
         scheduleReplant(block);

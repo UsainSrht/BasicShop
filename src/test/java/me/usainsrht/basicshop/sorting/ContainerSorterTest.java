@@ -36,10 +36,10 @@ public class ContainerSorterTest {
 
         assertEquals(Category.MINERAL_PROGRESSION, ItemCategorizer.getCategory(Material.RAW_GOLD));
         assertEquals(ProgressionChain.GOLD, ItemCategorizer.getProgressionChain(Material.RAW_GOLD));
-        assertEquals(0, ItemCategorizer.getProgressionStage(Material.RAW_GOLD));
-        assertEquals(1, ItemCategorizer.getProgressionStage(Material.GOLD_INGOT));
-        assertEquals(2, ItemCategorizer.getProgressionStage(Material.GOLD_NUGGET));
-        assertEquals(3, ItemCategorizer.getProgressionStage(Material.GOLD_BLOCK));
+        assertEquals(1, ItemCategorizer.getProgressionStage(Material.RAW_GOLD));
+        assertEquals(4, ItemCategorizer.getProgressionStage(Material.GOLD_INGOT));
+        assertEquals(5, ItemCategorizer.getProgressionStage(Material.GOLD_NUGGET));
+        assertEquals(6, ItemCategorizer.getProgressionStage(Material.GOLD_BLOCK));
     }
 
     @Test
@@ -114,6 +114,51 @@ public class ContainerSorterTest {
         org.mockito.Mockito.when(stack.getType()).thenReturn(mat);
         org.mockito.Mockito.when(stack.getAmount()).thenReturn(amount);
         return stack;
+    }
+
+    @Test
+    public void testEquipmentTierOrdering() {
+        org.bukkit.inventory.ItemStack netheriteChest = mockItem(Material.NETHERITE_CHESTPLATE, 1);
+        org.bukkit.inventory.ItemStack diamondChest = mockItem(Material.DIAMOND_CHESTPLATE, 1);
+        org.bukkit.inventory.ItemStack ironChest = mockItem(Material.IRON_CHESTPLATE, 1);
+
+        assertTrue(ContainerSorter.compareItems(netheriteChest, diamondChest) < 0, "Netherite chestplate should sort before Diamond chestplate");
+        assertTrue(ContainerSorter.compareItems(diamondChest, ironChest) < 0, "Diamond chestplate should sort before Iron chestplate");
+
+        org.bukkit.inventory.ItemStack copperSword = mockItem(Material.matchMaterial("COPPER_SWORD") != null ? Material.matchMaterial("COPPER_SWORD") : Material.GOLDEN_SWORD, 1);
+        org.bukkit.inventory.ItemStack stoneSword = mockItem(Material.STONE_SWORD, 1);
+        org.bukkit.inventory.ItemStack woodSword = mockItem(Material.WOODEN_SWORD, 1);
+
+        assertTrue(ItemCategorizer.getMaterialTier(Material.GOLDEN_SWORD).getWeight() > ItemCategorizer.getMaterialTier(Material.STONE_SWORD).getWeight());
+        assertTrue(ItemCategorizer.getMaterialTier(Material.STONE_SWORD).getWeight() > ItemCategorizer.getMaterialTier(Material.WOODEN_SWORD).getWeight());
+        assertTrue(ContainerSorter.compareItems(stoneSword, woodSword) < 0, "Stone sword should sort before Wooden sword");
+    }
+
+    @Test
+    public void testMineralProgressionChainOrdering() {
+        org.bukkit.inventory.ItemStack ancientDebris = mockItem(Material.ANCIENT_DEBRIS, 64);
+        org.bukkit.inventory.ItemStack netheriteScrap = mockItem(Material.NETHERITE_SCRAP, 64);
+        org.bukkit.inventory.ItemStack netheriteIngot = mockItem(Material.NETHERITE_INGOT, 64);
+        org.bukkit.inventory.ItemStack netheriteBlock = mockItem(Material.NETHERITE_BLOCK, 64);
+
+        assertTrue(ContainerSorter.compareItems(ancientDebris, netheriteScrap) < 0, "Ancient Debris should sort before Netherite Scrap");
+        assertTrue(ContainerSorter.compareItems(netheriteScrap, netheriteIngot) < 0, "Netherite Scrap should sort before Netherite Ingot");
+        assertTrue(ContainerSorter.compareItems(netheriteIngot, netheriteBlock) < 0, "Netherite Ingot should sort before Netherite Block");
+
+        org.bukkit.inventory.ItemStack goldOre = mockItem(Material.GOLD_ORE, 64);
+        org.bukkit.inventory.ItemStack rawGold = mockItem(Material.RAW_GOLD, 64);
+        org.bukkit.inventory.ItemStack rawGoldBlock = mockItem(Material.RAW_GOLD_BLOCK, 64);
+        org.bukkit.inventory.ItemStack goldIngot = mockItem(Material.GOLD_INGOT, 64);
+        org.bukkit.inventory.ItemStack goldNugget = mockItem(Material.GOLD_NUGGET, 64);
+        org.bukkit.inventory.ItemStack goldBlock = mockItem(Material.GOLD_BLOCK, 64);
+
+        assertTrue(ContainerSorter.compareItems(goldOre, rawGold) < 0);
+        assertTrue(ContainerSorter.compareItems(rawGold, rawGoldBlock) < 0);
+        assertTrue(ContainerSorter.compareItems(rawGoldBlock, goldIngot) < 0);
+        assertTrue(ContainerSorter.compareItems(goldIngot, goldNugget) < 0);
+        assertTrue(ContainerSorter.compareItems(goldNugget, goldBlock) < 0);
+
+        assertTrue(ContainerSorter.compareItems(netheriteIngot, goldIngot) < 0, "Netherite chain should sort before Gold chain");
     }
 
     @Test

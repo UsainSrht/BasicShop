@@ -49,11 +49,13 @@ public final class ItemCategorizer {
     }
 
     public enum MaterialTier {
-        NETHERITE(6),
-        DIAMOND(5),
-        GOLD(4),
-        IRON(3),
-        CHAINMAIL(2),
+        NETHERITE(8),
+        DIAMOND(7),
+        IRON(6),
+        GOLD(5),
+        COPPER(4),
+        CHAINMAIL_STONE(3),
+        TURTLE(2),
         WOOD_LEATHER_OTHER(1);
 
         private final int weight;
@@ -99,7 +101,7 @@ public final class ItemCategorizer {
         addIfPresent(PRIORITY_MATERIALS,
                 "NETHER_STAR", "BEACON", "ELYTRA", "DRAGON_EGG", "ENCHANTED_GOLDEN_APPLE",
                 "CONDUIT", "TOTEM_OF_UNDYING", "HEART_OF_THE_SEA", "DRAGON_HEAD", "HEAVY_CORE",
-                "RECOVERY_COMPASS", "NETHERITE_BLOCK", "RESPAWN_ANCHOR"
+                "RECOVERY_COMPASS", "RESPAWN_ANCHOR"
         );
     }
 
@@ -180,56 +182,94 @@ public final class ItemCategorizer {
         String name = mat.name();
         if (name.startsWith("NETHERITE_")) return MaterialTier.NETHERITE;
         if (name.startsWith("DIAMOND_")) return MaterialTier.DIAMOND;
-        if (name.startsWith("GOLDEN_") || name.startsWith("GOLD_")) return MaterialTier.GOLD;
         if (name.startsWith("IRON_")) return MaterialTier.IRON;
-        if (name.startsWith("CHAINMAIL_")) return MaterialTier.CHAINMAIL;
+        if (name.startsWith("GOLDEN_") || name.startsWith("GOLD_")) return MaterialTier.GOLD;
+        if (name.startsWith("COPPER_")) return MaterialTier.COPPER;
+        if (name.startsWith("CHAINMAIL_") || name.startsWith("STONE_")) return MaterialTier.CHAINMAIL_STONE;
+        if (name.equals("TURTLE_HELMET") || name.startsWith("TURTLE_")) return MaterialTier.TURTLE;
         return MaterialTier.WOOD_LEATHER_OTHER;
     }
 
     public static ProgressionChain getProgressionChain(Material mat) {
-        if (mat == null) return ProgressionChain.NONE;
+        if (mat == null || isAir(mat)) return ProgressionChain.NONE;
+        if (getEquipmentType(mat) != EquipmentType.NOT_EQUIPMENT) return ProgressionChain.NONE;
         String name = mat.name();
 
-        if (name.contains("GOLD")) return ProgressionChain.GOLD;
-        if (name.contains("IRON")) return ProgressionChain.IRON;
-        if (name.contains("COPPER")) return ProgressionChain.COPPER;
-        if (name.contains("DIAMOND")) return ProgressionChain.DIAMOND;
-        if (name.contains("EMERALD")) return ProgressionChain.EMERALD;
-        if (name.contains("COAL")) return ProgressionChain.COAL;
-        if (name.contains("LAPIS")) return ProgressionChain.LAPIS;
-        if (name.contains("REDSTONE") && (name.contains("ORE") || name.equals("REDSTONE") || name.contains("BLOCK"))) return ProgressionChain.REDSTONE;
-        if (name.contains("ANCIENT_DEBRIS") || name.contains("NETHERITE_SCRAP") || name.contains("NETHERITE_INGOT") || (name.equals("NETHERITE_BLOCK"))) return ProgressionChain.NETHERITE;
-        if (name.contains("QUARTZ") && !name.contains("SMOOTH") && !name.contains("PILLAR") && !name.contains("STAIRS") && !name.contains("SLAB")) return ProgressionChain.QUARTZ;
-        if (name.contains("AMETHYST")) return ProgressionChain.AMETHYST;
+        if (name.contains("ANCIENT_DEBRIS") || name.equals("NETHERITE_SCRAP") || name.equals("NETHERITE_INGOT") || name.equals("NETHERITE_BLOCK")) {
+            return ProgressionChain.NETHERITE;
+        }
+        if (name.contains("DIAMOND") && !name.contains("HORSE")) {
+            return ProgressionChain.DIAMOND;
+        }
+        if (name.contains("EMERALD")) {
+            return ProgressionChain.EMERALD;
+        }
+        if (name.contains("GOLD") && !name.contains("APPLE") && !name.contains("CARROT") && !name.contains("HORSE")) {
+            return ProgressionChain.GOLD;
+        }
+        if (name.contains("IRON") && !name.contains("BARS") && !name.contains("DOOR") && !name.contains("TRAPDOOR") && !name.contains("GOLEM") && !name.contains("HORSE")) {
+            return ProgressionChain.IRON;
+        }
+        if (name.contains("COPPER") && !name.contains("WAXED") && !name.contains("GOLEM") && !name.contains("GRATE") && !name.contains("BULB") && !name.contains("DOOR") && !name.contains("TRAPDOOR")) {
+            return ProgressionChain.COPPER;
+        }
+        if (name.contains("COAL")) {
+            return ProgressionChain.COAL;
+        }
+        if (name.contains("LAPIS")) {
+            return ProgressionChain.LAPIS;
+        }
+        if (name.contains("REDSTONE")) {
+            return ProgressionChain.REDSTONE;
+        }
+        if (name.contains("QUARTZ") && !name.contains("SMOOTH") && !name.contains("PILLAR") && !name.contains("STAIRS") && !name.contains("SLAB")) {
+            return ProgressionChain.QUARTZ;
+        }
+        if (name.contains("AMETHYST")) {
+            return ProgressionChain.AMETHYST;
+        }
 
         return ProgressionChain.NONE;
     }
 
     /**
      * Gets the crafting lifecycle stage index for progression sequencing.
-     * Stage 0: Raw / Ore
-     * Stage 1: Ingot / Gem
-     * Stage 2: Nugget / Intermediate
-     * Stage 3: Block
+     * Stage 0: Ores (Ancient Debris, *_ORE, DEEPSLATE_*_ORE, NETHER_*_ORE)
+     * Stage 1: Raw Ore (RAW_*)
+     * Stage 2: Raw Ore Block (RAW_*_BLOCK)
+     * Stage 3: Intermediate / Scrap (NETHERITE_SCRAP, AMETHYST_SHARD, CHARCOAL)
+     * Stage 4: Ingot / Gem (NETHERITE_INGOT, *_INGOT, DIAMOND, EMERALD, COAL, LAPIS_LAZULI, REDSTONE, QUARTZ)
+     * Stage 5: Nugget (*_NUGGET)
+     * Stage 6: Mineral Block (*_BLOCK, NETHERITE_BLOCK, AMETHYST_BLOCK)
      */
     public static int getProgressionStage(Material mat) {
         if (mat == null) return -1;
         String name = mat.name();
 
-        if (name.startsWith("RAW_") || name.contains("_ORE") || name.equals("ANCIENT_DEBRIS") || name.equals("AMETHYST_SHARD")) {
+        if (name.equals("ANCIENT_DEBRIS") || (name.contains("_ORE") && !name.contains("BLOCK"))) {
             return 0;
         }
-        if (name.endsWith("_INGOT") || name.equals("DIAMOND") || name.equals("EMERALD") || name.equals("COAL") ||
-                name.equals("LAPIS_LAZULI") || name.equals("REDSTONE") || name.equals("QUARTZ") || name.equals("NETHERITE_SCRAP")) {
+        if (name.startsWith("RAW_") && !name.endsWith("_BLOCK")) {
             return 1;
         }
-        if (name.endsWith("_NUGGET")) {
+        if (name.startsWith("RAW_") && name.endsWith("_BLOCK")) {
             return 2;
         }
-        if (name.endsWith("_BLOCK")) {
+        if (name.equals("NETHERITE_SCRAP") || name.equals("AMETHYST_SHARD") || name.equals("CHARCOAL")) {
             return 3;
         }
-        return 1;
+        if (name.endsWith("_INGOT") || name.equals("DIAMOND") || name.equals("EMERALD") ||
+                name.equals("COAL") || name.equals("LAPIS_LAZULI") || name.equals("REDSTONE") ||
+                name.equals("QUARTZ")) {
+            return 4;
+        }
+        if (name.endsWith("_NUGGET")) {
+            return 5;
+        }
+        if (name.endsWith("_BLOCK")) {
+            return 6;
+        }
+        return 4;
     }
 
     public static String getSubCategory(Material mat) {
