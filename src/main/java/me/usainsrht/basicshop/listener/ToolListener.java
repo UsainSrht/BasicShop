@@ -162,13 +162,13 @@ public final class ToolListener implements Listener {
         if (toolFactory.getToolType(item) != ShopToolType.SORTING_STAFF)
             return;
 
+        event.setCancelled(true);
+
         Player player = event.getPlayer();
         if (!player.hasPermission("basicshop.tools.sorting_staff"))
             return;
         if (player.hasCooldown(item))
             return;
-
-        event.setCancelled(true);
 
         Block block = event.getClickedBlock();
         if (block == null)
