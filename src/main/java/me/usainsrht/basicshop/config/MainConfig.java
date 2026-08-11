@@ -35,8 +35,9 @@ public final class MainConfig {
      * @param subcommands        Map of logical key → configured sub-command name.
      *                           Keys: {@code help}, {@code reload}, {@code quicksell},
      *                           {@code quicksell-hand}, {@code quicksell-inventory}.
+     * @param quicksellAliases   Extra aliases for the quicksell root command.
      */
-    public record CommandsConfig(String root, List<String> aliases, Map<String, String> subcommands) {
+    public record CommandsConfig(String root, List<String> aliases, Map<String, String> subcommands, List<String> quicksellAliases) {
         /** Convenience getter — returns the configured sub-command name or the key itself as fallback. */
         public String sub(String key) {
             return subcommands.getOrDefault(key, key);
@@ -152,20 +153,22 @@ public final class MainConfig {
 
         Map<String, String> subs = new LinkedHashMap<>();
         ConfigurationSection subSec = sec != null ? sec.getConfigurationSection("subcommands") : null;
+        List<String> quicksellAliases = subSec != null ? subSec.getStringList("quicksell-aliases") : Collections.emptyList();
+
         // Defaults
         subs.put("help",                "help");
         subs.put("reload",              "reload");
         subs.put("quicksell",           "quicksell");
         subs.put("quicksell-hand",      "hand");
         subs.put("quicksell-inventory", "inventory");
-        subs.put("give",                  "give");
+        subs.put("give",                "give");
         if (subSec != null) {
             for (String key : subs.keySet()) {
                 String val = subSec.getString(key);
                 if (val != null && !val.isBlank()) subs.put(key, val);
             }
         }
-        return new CommandsConfig(root, Collections.unmodifiableList(aliases), Collections.unmodifiableMap(subs));
+        return new CommandsConfig(root, Collections.unmodifiableList(aliases), Collections.unmodifiableMap(subs), Collections.unmodifiableList(quicksellAliases));
     }
 
     public boolean isBuyingEnabled()     { return buyingEnabled; }

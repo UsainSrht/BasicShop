@@ -10,6 +10,7 @@ import me.usainsrht.basicshop.item.ShopToolFactory;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -38,6 +39,9 @@ import java.util.Map;
  *   /shop quicksell hand              — sell held item             [basicshop.quicksell.hand]
  *   /shop quicksell inventory         — sell all inventory items   [basicshop.quicksell.inventory]
  *   /shop give &lt;player&gt; &lt;tool&gt; &lt;amount&gt; — give a shop tool        [basicshop.admin.give]
+ *   /quicksell                        — open quicksell GUI         [basicshop.quicksell]
+ *   /quicksell hand                   — sell held item             [basicshop.quicksell.hand]
+ *   /quicksell inventory              — sell all inventory items   [basicshop.quicksell.inventory]
  * </pre>
  *
  * <p>Every sub-command with restricted access uses {@code .requires()} to guard execution.
@@ -78,6 +82,11 @@ public final class ShopCommand {
                     buildCommandTree(cmdCfg),
                     "BasicShop main command.",
                     cmdCfg.aliases()
+            );
+            commands.register(
+                    buildQuickSellNode(cmdCfg).build(),
+                    "BasicShop quicksell command.",
+                    cmdCfg.quicksellAliases()
             );
         });
     }
@@ -120,45 +129,7 @@ public final class ShopCommand {
                             configManager.getMessagesConfig().send(ctx.getSource().getSender(), "reload-success");
                             return Command.SINGLE_SUCCESS;
                         }))
-                .then(Commands.literal(cmdCfg.sub("quicksell"))
-                        .executes(ctx -> {
-                            if (!(ctx.getSource().getSender() instanceof Player player)) {
-                                sendMessage(ctx.getSource().getSender(), "player-only");
-                                return 0;
-                            }
-                            if (!player.hasPermission("basicshop.quicksell")) {
-                                sendMessage(player, "no-permission");
-                                return 0;
-                            }
-                            openQuickSell(player);
-                            return Command.SINGLE_SUCCESS;
-                        })
-                        .then(Commands.literal(cmdCfg.sub("quicksell-hand"))
-                                .executes(ctx -> {
-                                    if (!(ctx.getSource().getSender() instanceof Player player)) {
-                                        sendMessage(ctx.getSource().getSender(), "player-only");
-                                        return 0;
-                                    }
-                                    if (!player.hasPermission("basicshop.quicksell.hand")) {
-                                        sendMessage(player, "no-permission");
-                                        return 0;
-                                    }
-                                    executeQuickSellHand(player);
-                                    return Command.SINGLE_SUCCESS;
-                                }))
-                        .then(Commands.literal(cmdCfg.sub("quicksell-inventory"))
-                                .executes(ctx -> {
-                                    if (!(ctx.getSource().getSender() instanceof Player player)) {
-                                        sendMessage(ctx.getSource().getSender(), "player-only");
-                                        return 0;
-                                    }
-                                    if (!player.hasPermission("basicshop.quicksell.inventory")) {
-                                        sendMessage(player, "no-permission");
-                                        return 0;
-                                    }
-                                    executeQuickSellInventory(player);
-                                    return Command.SINGLE_SUCCESS;
-                                })))
+                .then(buildQuickSellNode(cmdCfg))
                 .then(Commands.literal(cmdCfg.sub("give"))
                         .requires(src -> src.getSender().hasPermission("basicshop.admin.give"))
                         .then(Commands.argument("target", StringArgumentType.word())
@@ -172,6 +143,48 @@ public final class ShopCommand {
                                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 64))
                                                 .executes(this::executeGive)))))
                 .build();
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> buildQuickSellNode(MainConfig.CommandsConfig cmdCfg) {
+        return Commands.literal(cmdCfg.sub("quicksell"))
+                .executes(ctx -> {
+                    if (!(ctx.getSource().getSender() instanceof Player player)) {
+                        sendMessage(ctx.getSource().getSender(), "player-only");
+                        return 0;
+                    }
+                    if (!player.hasPermission("basicshop.quicksell")) {
+                        sendMessage(player, "no-permission");
+                        return 0;
+                    }
+                    openQuickSell(player);
+                    return Command.SINGLE_SUCCESS;
+                })
+                .then(Commands.literal(cmdCfg.sub("quicksell-hand"))
+                        .executes(ctx -> {
+                            if (!(ctx.getSource().getSender() instanceof Player player)) {
+                                sendMessage(ctx.getSource().getSender(), "player-only");
+                                return 0;
+                            }
+                            if (!player.hasPermission("basicshop.quicksell.hand")) {
+                                sendMessage(player, "no-permission");
+                                return 0;
+                            }
+                            executeQuickSellHand(player);
+                            return Command.SINGLE_SUCCESS;
+                        }))
+                .then(Commands.literal(cmdCfg.sub("quicksell-inventory"))
+                        .executes(ctx -> {
+                            if (!(ctx.getSource().getSender() instanceof Player player)) {
+                                sendMessage(ctx.getSource().getSender(), "player-only");
+                                return 0;
+                            }
+                            if (!player.hasPermission("basicshop.quicksell.inventory")) {
+                                sendMessage(player, "no-permission");
+                                return 0;
+                            }
+                            executeQuickSellInventory(player);
+                            return Command.SINGLE_SUCCESS;
+                        }));
     }
 
     // -------------------------------------------------------------------------

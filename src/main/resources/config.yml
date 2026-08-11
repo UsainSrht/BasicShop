@@ -15,6 +15,7 @@ commands:
     help: help
     reload: reload
     quicksell: quicksell
+    quicksell-aliases: []
     quicksell-hand: hand
     quicksell-inventory: inventory
     give: give
