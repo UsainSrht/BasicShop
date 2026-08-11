@@ -7,7 +7,9 @@ import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.QuickSellConfig;
 import me.usainsrht.basicshop.util.ShopSounds;
+import me.usainsrht.itemapi.itemtext.ItemText;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -127,7 +129,7 @@ public final class QuickSellGui extends AbstractShopGui {
         QuickSellConfig cfg = configManager.getQuickSellConfig();
 
         if (slot == cfg.getCloseSlot()) {
-            ShopSounds.play(player, configManager.getMainConfig().getBackToCategoriesSound());
+            ShopSounds.play(player, configManager.getMessagesConfig(), "back-to-categories-sound");
             if (cfg.isCloseReturnsToCategories()) {
                 morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                     CategoriesGui categories = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
@@ -140,17 +142,13 @@ public final class QuickSellGui extends AbstractShopGui {
         }
 
         if (slot == cfg.getSellAllSlot()) {
-            ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
+            ShopSounds.play(player, configManager.getMessagesConfig(), "gui-click-sound");
             ShopAPI.QuickSellResult result = shopAPI.quickSellInventory(player);
             if (result.anySuccess()) {
-                String msg = configManager.getMainConfig().getPrefix()
-                        + configManager.getMainConfig().getMessage("quicksell-inventory-success")
-                        .replace("<price>", String.format("%.2f", result.totalEarned()));
-                player.sendMessage(MM.deserialize(msg));
+                configManager.getMessagesConfig().send(player, "quicksell-inventory-success",
+                        Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(result.totalEarned())));
             } else {
-                String msg = configManager.getMainConfig().getPrefix()
-                        + configManager.getMainConfig().getMessage("no-sellable-items");
-                player.sendMessage(MM.deserialize(msg));
+                configManager.getMessagesConfig().send(player, "no-sellable-items");
             }
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 QuickSellGui refreshed = new QuickSellGui(configManager, shopAPI, morePaperLib, player);
@@ -199,14 +197,15 @@ public final class QuickSellGui extends AbstractShopGui {
     }
 
     private void sendResultMessage(Player player, TransactionResult result, ShopItem shopItem, int amount) {
-        String prefix = configManager.getMainConfig().getPrefix();
         if (result == TransactionResult.SUCCESS) {
             double price = shopItem.getSellPrice().orElse(0) * amount;
-            String msg = configManager.getMainConfig().getMessage("sell-success")
-                    .replace("<amount>", String.valueOf(amount))
-                    .replace("<item>",   "<lang:" + shopItem.getMaterial().translationKey() + ">")
-                    .replace("<price>",  String.format("%.2f", price));
-            player.sendMessage(MM.deserialize(prefix + msg));
+            ItemStack itemStack = new ItemStack(shopItem.getMaterial(), amount);
+            Component itemTextComp = ItemText.format(itemStack, b -> b.amount(amount));
+
+            configManager.getMessagesConfig().send(player, "sell-success",
+                    Placeholder.unparsed("amount", String.valueOf(amount)),
+                    Placeholder.component("item", itemTextComp),
+                    Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(price)));
             return;
         }
         String key = switch (result) {
@@ -216,6 +215,6 @@ public final class QuickSellGui extends AbstractShopGui {
             case ECONOMY_UNAVAILABLE  -> "vault-unavailable";
             default                   -> "vault-unavailable";
         };
-        player.sendMessage(MM.deserialize(prefix + configManager.getMainConfig().getMessage(key)));
+        configManager.getMessagesConfig().send(player, key);
     }
 }

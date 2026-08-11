@@ -1,5 +1,7 @@
 package me.usainsrht.basicshop.item;
 
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.UseCooldown;
 import me.usainsrht.basicshop.api.model.ShopToolType;
 import me.usainsrht.basicshop.config.ToolsConfig;
 import net.kyori.adventure.text.Component;
@@ -48,6 +50,18 @@ public final class ShopToolFactory {
             }
             meta.getPersistentDataContainer().set(toolKey, PersistentDataType.STRING, type.getId());
             stack.setItemMeta(meta);
+        }
+
+        ToolsConfig.ToolCooldownConfig cd = def.cooldown();
+        if (cd != null && cd.isCooldownActive()) {
+            NamespacedKey groupKey = new NamespacedKey("basicshop", type.getId());
+            stack.setData(DataComponentTypes.USE_COOLDOWN,
+                    UseCooldown.useCooldown((float) cd.durationSeconds())
+                            .cooldownGroup(groupKey)
+                            .build()
+            );
+        } else {
+            stack.unsetData(DataComponentTypes.USE_COOLDOWN);
         }
         return stack;
     }

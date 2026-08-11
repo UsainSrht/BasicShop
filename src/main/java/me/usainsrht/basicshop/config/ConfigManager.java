@@ -2,7 +2,9 @@ package me.usainsrht.basicshop.config;
 
 import me.usainsrht.basicshop.api.model.ShopCategory;
 import me.usainsrht.basicshop.api.model.ShopItem;
+import me.usainsrht.itemapi.yamlitem.YamlItem;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -28,6 +30,7 @@ public final class ConfigManager {
     private final Plugin plugin;
 
     private MainConfig       mainConfig;
+    private MessagesConfig   messagesConfig;
     private ToolsConfig      toolsConfig;
     private CategoriesConfig categoriesConfig;
     private QuickSellConfig  quickSellConfig;
@@ -45,6 +48,7 @@ public final class ConfigManager {
         // Save default resource files from jar
         try {
             saveDefault("config.yml");
+            saveDefault("messages.yml");
             saveDefault("categories.yml");
             saveDefault("quicksell.yml");
             saveDefaultCategories();
@@ -64,6 +68,16 @@ public final class ConfigManager {
             }
             if (this.toolsConfig == null) {
                 this.toolsConfig = new ToolsConfig(new YamlConfiguration());
+            }
+        }
+
+        try {
+            FileConfiguration msgCfg = loadYml("messages.yml");
+            this.messagesConfig = new MessagesConfig(msgCfg);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load messages.yml!", e);
+            if (this.messagesConfig == null) {
+                this.messagesConfig = new MessagesConfig(new YamlConfiguration());
             }
         }
 
@@ -187,9 +201,12 @@ public final class ConfigManager {
 
         for (String key : section.getKeys(false)) {
             ConfigurationSection sub = section.getConfigurationSection(key);
-            if (sub == null) continue;
+            ItemStack stack = null;
+            try {
+                stack = YamlItem.parse(sub);
+            } catch (Exception ignored) {}
 
-            Material mat = Material.matchMaterial(key);
+            Material mat = (stack != null && !stack.getType().isAir()) ? stack.getType() : Material.matchMaterial(key);
             if (mat == null) {
                 plugin.getLogger().warning("Unknown material '" + key + "' in category '" + categoryId + "', skipping.");
                 continue;
@@ -225,6 +242,7 @@ public final class ConfigManager {
     // -------------------------------------------------------------------------
 
     public MainConfig getMainConfig()             { return mainConfig; }
+    public MessagesConfig getMessagesConfig()     { return messagesConfig; }
     public ToolsConfig getToolsConfig()           { return toolsConfig; }
     public CategoriesConfig getCategoriesConfig() { return categoriesConfig; }
     public QuickSellConfig getQuickSellConfig()   { return quickSellConfig; }

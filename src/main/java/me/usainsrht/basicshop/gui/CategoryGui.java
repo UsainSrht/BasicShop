@@ -7,7 +7,9 @@ import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.MainConfig;
 import me.usainsrht.basicshop.util.ShopSounds;
+import me.usainsrht.itemapi.itemtext.ItemText;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -184,7 +186,7 @@ public final class CategoryGui extends AbstractShopGui {
         ClickType type = event.getClick();
 
         if (slot == slotBack) {
-            ShopSounds.play(player, configManager.getMainConfig().getBackToCategoriesSound());
+            ShopSounds.play(player, configManager.getMessagesConfig(), "back-to-categories-sound");
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 CategoriesGui cg = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
                 player.openInventory(cg.getInventory());
@@ -193,7 +195,7 @@ public final class CategoryGui extends AbstractShopGui {
         }
 
         if (slot == slotPrev && page > 0) {
-            ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
+            ShopSounds.play(player, configManager.getMessagesConfig(), "gui-click-sound");
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 CategoryGui prev = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page - 1);
                 player.openInventory(prev.getInventory());
@@ -204,7 +206,7 @@ public final class CategoryGui extends AbstractShopGui {
         if (slot == slotNext) {
             int totalPages = Math.max(1, (int) Math.ceil((double) category.getItems().size() / pageSize));
             if (page < totalPages - 1) {
-                ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
+                ShopSounds.play(player, configManager.getMessagesConfig(), "gui-click-sound");
                 morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                     CategoryGui next = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, page + 1);
                     player.openInventory(next.getInventory());
@@ -278,15 +280,17 @@ public final class CategoryGui extends AbstractShopGui {
     }
 
     private void sendTransactionMessage(Player player, ShopItem item, TransactionResult result, boolean isBuy, int amount) {
-        String prefix = configManager.getMainConfig().getPrefix();
         if (result == TransactionResult.SUCCESS) {
             String key = isBuy ? "buy-success" : "sell-success";
-            String msg = configManager.getMainConfig().getMessage(key);
             double price = (isBuy ? item.getBuyPrice().orElse(0) : item.getSellPrice().orElse(0)) * amount;
-            msg = msg.replace("<amount>", String.valueOf(amount))
-                    .replace("<item>",   "<lang:" + item.getMaterial().translationKey() + ">")
-                    .replace("<price>",  configManager.getMainConfig().formatPrice(price));
-            player.sendMessage(MM.deserialize(prefix + msg));
+
+            ItemStack itemStack = new ItemStack(item.getMaterial(), amount);
+            Component itemTextComp = ItemText.format(itemStack, b -> b.amount(amount));
+
+            configManager.getMessagesConfig().send(player, key,
+                    Placeholder.unparsed("amount", String.valueOf(amount)),
+                    Placeholder.component("item", itemTextComp),
+                    Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(price)));
             return;
         }
         String key = switch (result) {
@@ -298,7 +302,7 @@ public final class CategoryGui extends AbstractShopGui {
             case GLOBAL_SELL_DISABLED -> "shop-sell-disabled";
             default                   -> "vault-unavailable";
         };
-        player.sendMessage(MM.deserialize(prefix + configManager.getMainConfig().getMessage(key)));
+        configManager.getMessagesConfig().send(player, key);
     }
 }
 

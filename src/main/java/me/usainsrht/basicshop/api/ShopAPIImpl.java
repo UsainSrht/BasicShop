@@ -373,6 +373,6 @@ public final class ShopAPIImpl implements ShopAPI {
     }
 
     private void playSellSound(Player player) {
-        ShopSounds.play(player, configManager.getMainConfig().getSellSound());
+        ShopSounds.play(player, configManager.getMessagesConfig(), "sell-sound");
     }
 }

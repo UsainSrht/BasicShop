@@ -1,0 +1,52 @@
+# BasicShop Messages & Sounds Configuration
+# All message text supports MiniMessage format: https://docs.advntr.dev/minimessage/format.html
+# Powered by YamlMessageAPI
+
+prefix: "<dark_gray>[<gold>BasicShop</gold>]</dark_gray> "
+
+no-permission: "<red>You do not have permission to do that."
+player-only: "<red>This command can only be used by players."
+reload-success: "<green>Configuration reloaded successfully."
+
+shop-buy-disabled: "<red>Buying is currently disabled."
+shop-sell-disabled: "<red>Selling is currently disabled."
+
+item-buy-disabled: "<red>This item cannot be bought."
+item-sell-disabled: "<red>This item cannot be sold."
+
+buy-success: "<green>You bought <white><amount>x <item></white> for <gold><price></gold>."
+sell-success: "<green>You sold <white><amount>x <item></white> for <gold><price></gold>."
+
+insufficient-funds: "<red>You do not have enough money. Required: <gold><price></gold>."
+not-enough-items: "<red>You do not have enough of that item to sell."
+
+no-sellable-items: "<yellow>You have no sellable items in your inventory."
+quicksell-hand-empty: "<yellow>You are not holding any item."
+quicksell-inventory-success: "<green>Sold all sellable items for a total of <gold><price></gold>."
+
+tool-staff-line: "<green>You sold <white><amount>x <item></white> for <gold><price></gold> with Money Staff."
+tool-hoe-success: "<green>Sold crop drops for <gold><price></gold> and replanted."
+tool-hoe-autosell-on: "<green>Auto-sell enabled."
+tool-hoe-autosell-off: "<yellow>Auto-sell disabled."
+tool-sorting-staff-success: "<green>Container sorted successfully."
+
+give-success: "<green>Gave <white><amount>x <tool></white> to <white><player></white>."
+give-player-not-found: "<red>That player is not online."
+give-invalid-tool: "<red>Unknown tool. Use <white>money_staff</white>, <white>money_hoe</white>, or <white>sorting_staff</white>."
+
+vault-unavailable: "<red>Economy provider is unavailable. Please contact an administrator."
+
+unknown-item: "<red>That item is not configured in the shop."
+
+# GUI and transaction sound-only messages using Minecraft namespaces
+open-category-sound:
+  sound: "ui.button.click,1.0,1.2"
+
+back-to-categories-sound:
+  sound: "ui.button.click,1.0,0.8"
+
+gui-click-sound:
+  sound: "ui.button.click,0.8,1.0"
+
+sell-sound:
+  sound: "entity.experience_orb.pickup,0.5,1.2"

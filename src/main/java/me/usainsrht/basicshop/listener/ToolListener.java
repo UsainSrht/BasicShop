@@ -4,8 +4,12 @@ import me.usainsrht.basicshop.api.ShopAPI;
 import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.ShopToolType;
 import me.usainsrht.basicshop.config.ConfigManager;
+import me.usainsrht.basicshop.config.ToolsConfig;
 import me.usainsrht.basicshop.item.ShopToolFactory;
+import me.usainsrht.itemapi.itemtext.ItemText;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -97,7 +101,7 @@ public final class ToolListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         ShopToolType type = toolFactory.getToolType(event.getItemInHand());
         //hoe tilling also fires blockplaceevent 
-        if (type == ShopToolType.MONEY_STAFF) {
+        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF) {
             event.setCancelled(true);
         }
     }
@@ -113,6 +117,7 @@ public final class ToolListener implements Listener {
 
         Player player = event.getPlayer();
         if (!player.hasPermission("basicshop.tools.staff")) return;
+        if (player.hasCooldown(item)) return;
 
         event.setCancelled(true);
 
@@ -129,6 +134,40 @@ public final class ToolListener implements Listener {
         );
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onSortingStaffUse(PlayerInteractEvent event) {
+        if (!event.hasBlock() || !event.hasItem()) return;
+        if (!event.getAction().isRightClick()) return;
+        if (event.getHand() != EquipmentSlot.HAND) return;
+
+        ItemStack item = event.getItem();
+        if (toolFactory.getToolType(item) != ShopToolType.SORTING_STAFF) return;
+
+        Player player = event.getPlayer();
+        if (!player.hasPermission("basicshop.tools.sorting_staff")) return;
+        if (player.hasCooldown(item)) return;
+
+        event.setCancelled(true);
+
+        Block block = event.getClickedBlock();
+        if (block == null) return;
+
+        BlockState state = block.getState();
+        if (!(state instanceof Container)) return;
+
+        Location location = block.getLocation();
+        morePaperLib.scheduling().regionSpecificScheduler(location).run(() -> {
+            if (!player.isOnline()) return;
+            BlockState currentState = block.getState();
+            if (currentState instanceof Container currentContainer) {
+                boolean sorted = me.usainsrht.basicshop.sorting.ContainerSorter.sortContainer(player, currentContainer);
+                if (sorted) {
+                    configManager.getMessagesConfig().send(player, "tool-sorting-staff-success");
+                }
+            }
+        });
+    }
+
     private void sellItemsInBlock(Player player, Block block) {
         if (!player.isOnline()) return;
 
@@ -138,14 +177,14 @@ public final class ToolListener implements Listener {
         ShopAPI.QuickSellResult result = shopAPI.sellFromInventory(player, container.getInventory());
         if (!result.anySuccess()) return;
 
-        String prefix = configManager.getMainConfig().getPrefix();
-        String template = configManager.getMainConfig().getMessage("tool-staff-line");
         for (ShopAPI.SoldMaterialLine line : result.lines()) {
-            String msg = template
-                    .replace("<amount>", String.valueOf(line.amount()))
-                    .replace("<item>", "<lang:" + line.material().translationKey() + ">")
-                    .replace("<price>", configManager.getMainConfig().formatPrice(line.earned()));
-            player.sendMessage(MM.deserialize(prefix + msg));
+            ItemStack lineStack = new ItemStack(line.material(), line.amount());
+            Component itemTextComp = ItemText.format(lineStack, b -> b.amount(line.amount()));
+
+            configManager.getMessagesConfig().send(player, "tool-staff-line",
+                    Placeholder.unparsed("amount", String.valueOf(line.amount())),
+                    Placeholder.component("item", itemTextComp),
+                    Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(line.earned())));
         }
     }
 
@@ -167,13 +206,13 @@ public final class ToolListener implements Listener {
 
         Player player = event.getPlayer();
         if (!player.hasPermission("basicshop.tools.hoe")) return;
+        if (player.hasCooldown(item)) return;
 
         boolean autoSellEnabled = toolFactory.toggleAutoSell(item);
         player.getInventory().setItemInMainHand(item);
 
-        String prefix = configManager.getMainConfig().getPrefix();
         String key = autoSellEnabled ? "tool-hoe-autosell-on" : "tool-hoe-autosell-off";
-        player.sendActionBar(MM.deserialize(prefix + configManager.getMainConfig().getMessage(key)));
+        configManager.getMessagesConfig().send(player, key);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -182,6 +221,10 @@ public final class ToolListener implements Listener {
         ItemStack tool = player.getInventory().getItemInMainHand();
         if (toolFactory.getToolType(tool) != ShopToolType.MONEY_HOE) return;
         if (!player.hasPermission("basicshop.tools.hoe")) return;
+        if (player.hasCooldown(tool)) {
+            event.setCancelled(true);
+            return;
+        }
 
         Block block = event.getBlock();
         if (!MONEY_HOE_CROPS.contains(block.getType())) return;
@@ -200,6 +243,11 @@ public final class ToolListener implements Listener {
             handleAutoSell(player, block, drops);
         } else {
             giveDrops(player, block, drops);
+        }
+
+        ToolsConfig.ToolDefinition hoeDef = configManager.getToolsConfig().get(ShopToolType.MONEY_HOE);
+        if (hoeDef != null && hoeDef.cooldown() != null && hoeDef.cooldown().isCooldownActive()) {
+            player.setCooldown(tool, (int) Math.round(hoeDef.cooldown().durationSeconds() * 20.0));
         }
 
         scheduleReplant(block);
@@ -237,9 +285,8 @@ public final class ToolListener implements Listener {
 
         if (totalSold > 0) {
             shopAPI.sellItemStacks(player, sellable);
-            String msg = configManager.getMainConfig().getMessage("tool-hoe-success")
-                    .replace("<price>", configManager.getMainConfig().formatPrice(totalEarned));
-            player.sendActionBar(MM.deserialize(msg));
+            configManager.getMessagesConfig().send(player, "tool-hoe-success",
+                    Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(totalEarned)));
         }
 
         for (ItemStack leftover : unsellable) {

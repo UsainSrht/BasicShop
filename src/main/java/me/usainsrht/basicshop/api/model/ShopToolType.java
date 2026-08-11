@@ -9,7 +9,8 @@ import java.util.Optional;
 public enum ShopToolType {
 
     MONEY_STAFF("money_staff"),
-    MONEY_HOE("money_hoe");
+    MONEY_HOE("money_hoe"),
+    SORTING_STAFF("sorting_staff");
 
     private final String id;
 

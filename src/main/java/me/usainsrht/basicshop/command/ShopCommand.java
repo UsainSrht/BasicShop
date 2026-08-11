@@ -14,7 +14,10 @@ import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import me.usainsrht.itemapi.itemtext.ItemText;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -114,9 +117,7 @@ public final class ShopCommand {
                         .requires(src -> src.getSender().hasPermission("basicshop.admin.reload"))
                         .executes(ctx -> {
                             configManager.load();
-                            String msg = configManager.getMainConfig().getPrefix()
-                                    + configManager.getMainConfig().getMessage("reload-success");
-                            ctx.getSource().getSender().sendMessage(MM.deserialize(msg));
+                            configManager.getMessagesConfig().send(ctx.getSource().getSender(), "reload-success");
                             return Command.SINGLE_SUCCESS;
                         }))
                 .then(Commands.literal(cmdCfg.sub("quicksell"))
@@ -192,7 +193,7 @@ public final class ShopCommand {
     }
 
     private void sendHelp(Player player, MainConfig.CommandsConfig cmdCfg) {
-        String prefix = configManager.getMainConfig().getPrefix();
+        String prefix = configManager.getMessagesConfig().getPrefix();
         String root   = cmdCfg.root();
         player.sendMessage(MM.deserialize(prefix + "<yellow>BasicShop Commands:"));
         player.sendMessage(MM.deserialize("<gold>/" + root + "</gold> <gray>— Open the shop"));
@@ -229,25 +230,24 @@ public final class ShopCommand {
         Map<Integer, ItemStack> overflow = target.getInventory().addItem(stack);
         overflow.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
 
-        String msg = configManager.getMainConfig().getMessage("give-success")
-                .replace("<amount>", String.valueOf(amount))
-                .replace("<tool>", toolType.getId())
-                .replace("<player>", target.getName());
-        sendRaw(sender, msg);
+        configManager.getMessagesConfig().send(sender, "give-success",
+                Placeholder.unparsed("amount", String.valueOf(amount)),
+                Placeholder.unparsed("tool", toolType.getId()),
+                Placeholder.unparsed("player", target.getName()));
         return Command.SINGLE_SUCCESS;
     }
 
     private void sendMessage(CommandSender sender, String messageKey) {
-        sendRaw(sender, configManager.getMainConfig().getMessage(messageKey));
+        configManager.getMessagesConfig().send(sender, messageKey);
     }
 
     private void sendRaw(CommandSender sender, String message) {
-        sender.sendMessage(MM.deserialize(configManager.getMainConfig().getPrefix() + message));
+        configManager.getMessagesConfig().send(sender, message);
     }
 
     private void executeQuickSellHand(Player player) {
+        var handStack = player.getInventory().getItemInMainHand().clone();
         var result = shopAPI.quickSellHand(player);
-        String prefix = configManager.getMainConfig().getPrefix();
         String key = switch (result) {
             case SUCCESS               -> null;
             case NOT_ENOUGH_ITEMS      -> "quicksell-hand-empty";
@@ -257,27 +257,27 @@ public final class ShopCommand {
             default                    -> "vault-unavailable";
         };
         if (key != null) {
-            player.sendMessage(MM.deserialize(prefix + configManager.getMainConfig().getMessage(key)));
+            configManager.getMessagesConfig().send(player, key);
         } else {
-            // Success message with item/price info
-            var hand = player.getInventory().getItemInMainHand();
-            String msg = configManager.getMainConfig().getMessage("sell-success")
-                    .replace("<amount>", "?")
-                    .replace("<item>", "<lang:" + hand.getType().translationKey() + ">")
-                    .replace("<price>", "?");
-            player.sendMessage(MM.deserialize(prefix + msg));
+            double earned = shopAPI.getItemByMaterial(handStack.getType())
+                    .flatMap(si -> si.getSellPrice().isPresent() ? java.util.Optional.of(si.getSellPrice().getAsDouble() * handStack.getAmount()) : java.util.Optional.empty())
+                    .orElse(0.0);
+
+            Component itemTextComp = ItemText.format(handStack, b -> b.amount(handStack.getAmount()));
+            configManager.getMessagesConfig().send(player, "sell-success",
+                    Placeholder.unparsed("amount", String.valueOf(handStack.getAmount())),
+                    Placeholder.component("item", itemTextComp),
+                    Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
         }
     }
 
     private void executeQuickSellInventory(Player player) {
         ShopAPI.QuickSellResult result = shopAPI.quickSellInventory(player);
-        String prefix = configManager.getMainConfig().getPrefix();
         if (result.anySuccess()) {
-            String msg = configManager.getMainConfig().getMessage("quicksell-inventory-success")
-                    .replace("<price>", String.format("%.2f", result.totalEarned()));
-            player.sendMessage(MM.deserialize(prefix + msg));
+            configManager.getMessagesConfig().send(player, "quicksell-inventory-success",
+                    Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(result.totalEarned())));
         } else {
-            player.sendMessage(MM.deserialize(prefix + configManager.getMainConfig().getMessage("no-sellable-items")));
+            configManager.getMessagesConfig().send(player, "no-sellable-items");
         }
     }
 }

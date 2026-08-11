@@ -27,9 +27,6 @@ public final class MainConfig {
     public record FillerConfig(boolean enabled, Material material, String name, boolean hideTooltip) {}
     public record CategoryGuiConfig(String pageFormat, NavButtonConfig backButton, NavButtonConfig prevButton, NavButtonConfig nextButton, FillerConfig filler) {}
 
-    /** A configurable Bukkit sound with volume and pitch. */
-    public record SoundSettings(boolean enabled, String sound, float volume, float pitch) {}
-
     /**
      * Holds the configured root command name, its aliases, and all sub-command names.
      *
@@ -51,8 +48,6 @@ public final class MainConfig {
     private final String disabledText;
     private final String numberFormatPattern;
     private final boolean modernItemListing;
-    private final String prefix;
-    private final Map<String, String> messages;
 
     // Item display template
     private final String itemDisplayName;
@@ -67,29 +62,12 @@ public final class MainConfig {
     // Command names
     private final CommandsConfig commandsConfig;
 
-    // GUI / transaction sounds
-    private final SoundSettings openCategorySound;
-    private final SoundSettings backToCategoriesSound;
-    private final SoundSettings guiClickSound;
-    private final SoundSettings sellSound;
-
     public MainConfig(FileConfiguration cfg) {
         this.buyingEnabled       = cfg.getBoolean("global.buying-enabled",      true);
         this.sellingEnabled      = cfg.getBoolean("global.selling-enabled",     true);
         this.disabledText        = cfg.getString("global.disabled-text",        "<red>Disabled");
         this.numberFormatPattern = cfg.getString("global.number-format",        "#,##0.00");
         this.modernItemListing   = cfg.getBoolean("global.modern-item-listing", true);
-        this.prefix              = cfg.getString("messages.prefix", "<dark_gray>[<gold>BasicShop</gold>]</dark_gray> ");
-
-        Map<String, String> msgs = new HashMap<>();
-        ConfigurationSection section = cfg.getConfigurationSection("messages");
-        if (section != null) {
-            for (String key : section.getKeys(false)) {
-                String value = section.getString(key);
-                if (value != null) msgs.put(key, value);
-            }
-        }
-        this.messages = Collections.unmodifiableMap(msgs);
 
         ConfigurationSection itemDisplay = cfg.getConfigurationSection("item-display");
         this.itemDisplayName = itemDisplay != null
@@ -132,21 +110,6 @@ public final class MainConfig {
 
         ConfigurationSection cmdSec = cfg.getConfigurationSection("commands");
         this.commandsConfig = parseCommandsConfig(cmdSec);
-
-        ConfigurationSection soundsSec = cfg.getConfigurationSection("sounds");
-        this.openCategorySound      = parseSound(soundsSec, "open-category",      "UI_BUTTON_CLICK",              1.0f, 1.2f);
-        this.backToCategoriesSound  = parseSound(soundsSec, "back-to-categories", "UI_BUTTON_CLICK",              1.0f, 0.8f);
-        this.guiClickSound          = parseSound(soundsSec, "gui-click",          "UI_BUTTON_CLICK",              0.8f, 1.0f);
-        this.sellSound              = parseSound(soundsSec, "sell",               "ENTITY_EXPERIENCE_ORB_PICKUP", 0.5f, 1.2f);
-    }
-
-    private static SoundSettings parseSound(ConfigurationSection sec, String key, String defaultSound, float defaultVolume, float defaultPitch) {
-        ConfigurationSection sub = sec != null ? sec.getConfigurationSection(key) : null;
-        boolean enabled = sub == null || sub.getBoolean("enabled", true);
-        String sound    = sub != null ? sub.getString("sound", defaultSound) : defaultSound;
-        float volume    = (float) (sub != null ? sub.getDouble("volume", defaultVolume) : defaultVolume);
-        float pitch     = (float) (sub != null ? sub.getDouble("pitch", defaultPitch) : defaultPitch);
-        return new SoundSettings(enabled, sound, volume, pitch);
     }
 
     private static CategoryGuiConfig parseCategoryGuiConfig(ConfigurationSection sec) {
@@ -218,23 +181,9 @@ public final class MainConfig {
         }
     }
 
-    public String getPrefix()            { return prefix; }
-
-    /**
-     * Returns the MiniMessage string for a given message key,
-     * falling back to the key itself if not found.
-     */
-    public String getMessage(String key) {
-        return messages.getOrDefault(key, "<red>Missing message: " + key);
-    }
-
     public String getItemDisplayName()                    { return itemDisplayName; }
     public List<String> getItemDisplayLore()              { return itemDisplayLore; }
     public Map<ClickType, ClickAction> getClickActions()         { return clickActions; }
     public CategoryGuiConfig getCategoryGuiConfig()               { return categoryGuiConfig; }
     public CommandsConfig getCommandsConfig()                     { return commandsConfig; }
-    public SoundSettings getOpenCategorySound()                   { return openCategorySound; }
-    public SoundSettings getBackToCategoriesSound()               { return backToCategoriesSound; }
-    public SoundSettings getGuiClickSound()                       { return guiClickSound; }
-    public SoundSettings getSellSound()                           { return sellSound; }
 }

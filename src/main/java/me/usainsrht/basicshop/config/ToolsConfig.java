@@ -20,12 +20,22 @@ import java.util.Optional;
  */
 public final class ToolsConfig {
 
+    public record ToolCooldownConfig(
+            boolean enabled,
+            double durationSeconds
+    ) {
+        public boolean isCooldownActive() {
+            return enabled && durationSeconds > 0;
+        }
+    }
+
     public record ToolDefinition(
             Material material,
             String name,
             List<String> lore,
             Map<Enchantment, Integer> enchants,
-            Boolean enchantmentGlintOverride
+            Boolean enchantmentGlintOverride,
+            ToolCooldownConfig cooldown
     ) {}
 
     private static ToolDefinition defaultFor(ShopToolType type) {
@@ -35,7 +45,8 @@ public final class ToolsConfig {
                     "<gold>Money Staff",
                     List.of("<gray>Click a container to sell its contents."),
                     Map.of(),
-                    true
+                    true,
+                    new ToolCooldownConfig(true, 1.0)
             );
             case MONEY_HOE -> new ToolDefinition(
                     Material.GOLDEN_HOE,
@@ -45,7 +56,16 @@ public final class ToolsConfig {
                             "<gray>Click air to toggle auto-sell."
                     ),
                     buildDefaultHoeEnchants(),
-                    null
+                    null,
+                    new ToolCooldownConfig(true, 0.5)
+            );
+            case SORTING_STAFF -> new ToolDefinition(
+                    Material.AMETHYST_SHARD,
+                    "<light_purple>Sorting Staff",
+                    List.of("<gray>Click a container to sort its contents."),
+                    Map.of(),
+                    true,
+                    new ToolCooldownConfig(true, 2.0)
             );
         };
     }
@@ -69,13 +89,15 @@ public final class ToolsConfig {
             if (lore.isEmpty()) lore = fallback.lore();
             Map<Enchantment, Integer> enchants = parseEnchants(sub, fallback.enchants());
             Boolean glintOverride = parseGlintOverride(sub, fallback.enchantmentGlintOverride());
+            ToolCooldownConfig cooldown = parseCooldown(sub, fallback.cooldown());
 
             parsed.put(type, new ToolDefinition(
                     material,
                     name,
                     Collections.unmodifiableList(lore),
                     enchants,
-                    glintOverride
+                    glintOverride,
+                    cooldown
             ));
         }
 
@@ -131,6 +153,18 @@ public final class ToolsConfig {
             return fallback;
         }
         return sub.getBoolean("enchantment-glint-override");
+    }
+
+    private static ToolCooldownConfig parseCooldown(ConfigurationSection sub, ToolCooldownConfig fallback) {
+        if (sub == null || !sub.isConfigurationSection("cooldown")) {
+            return fallback;
+        }
+        ConfigurationSection cdSec = sub.getConfigurationSection("cooldown");
+        if (cdSec == null) return fallback;
+
+        boolean enabled = cdSec.getBoolean("enabled", fallback.enabled());
+        double duration = cdSec.getDouble("duration", fallback.durationSeconds());
+        return new ToolCooldownConfig(enabled, duration);
     }
 
     private static void putEnchant(Map<Enchantment, Integer> map, String key, int level) {

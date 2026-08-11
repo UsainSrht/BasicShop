@@ -7,7 +7,9 @@ import me.usainsrht.basicshop.config.CategoriesConfig;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.util.ShopSounds;
+import me.usainsrht.itemapi.itemtext.ItemText;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -81,7 +83,7 @@ public final class CategoriesGui extends AbstractShopGui {
         // Category slot
         for (CategoriesConfig.CategoryEntry entry : cfg.getCategories()) {
             if (entry.slot() == slot) {
-                ShopSounds.play(player, configManager.getMainConfig().getOpenCategorySound());
+                ShopSounds.play(player, configManager.getMessagesConfig(), "open-category-sound");
                 shopAPI.getCategory(entry.id()).ifPresent(category ->
                         morePaperLib.scheduling().entitySpecificScheduler(player).run(
                                 () -> openCategory(player, category), null));
@@ -104,10 +106,15 @@ public final class CategoriesGui extends AbstractShopGui {
                 if (shopItemOpt.isPresent()) {
                     var txResult = shopAPI.sellItem(player, shopItemOpt.get(), cursor.getAmount());
                     if (txResult == TransactionResult.SUCCESS) {
+                        ItemStack soldStack = cursor.clone();
                         event.setCursor(new ItemStack(org.bukkit.Material.AIR));
-                        sendMessage(player, "sell-success",
-                                cursor.getAmount(), "<lang:" + shopItemOpt.get().getMaterial().translationKey() + ">",
-                                shopItemOpt.get().getSellPrice().orElse(0) * cursor.getAmount());
+                        double earned = shopItemOpt.get().getSellPrice().orElse(0) * soldStack.getAmount();
+
+                        Component itemTextComp = ItemText.format(soldStack, b -> b.amount(soldStack.getAmount()));
+                        configManager.getMessagesConfig().send(player, "sell-success",
+                                Placeholder.unparsed("amount", String.valueOf(soldStack.getAmount())),
+                                Placeholder.component("item", itemTextComp),
+                                Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
                     } else {
                         sendTransactionMessage(player, txResult);
                     }
@@ -117,7 +124,7 @@ public final class CategoriesGui extends AbstractShopGui {
             }
         } else {
             // Open QuickSell inventory browser
-            ShopSounds.play(player, configManager.getMainConfig().getGuiClickSound());
+            ShopSounds.play(player, configManager.getMessagesConfig(), "gui-click-sound");
             morePaperLib.scheduling().entitySpecificScheduler(player).run(
                     () -> {
                         QuickSellGui qs = new QuickSellGui(configManager, shopAPI, morePaperLib, player);
@@ -131,21 +138,8 @@ public final class CategoriesGui extends AbstractShopGui {
         player.openInventory(categoryGui.getInventory());
     }
 
-    private void sendMessage(Player player, String key, Object... args) {
-        String msg = configManager.getMainConfig().getPrefix()
-                + configManager.getMainConfig().getMessage(key);
-        if (args.length >= 3) {
-            msg = msg.replace("<amount>", String.valueOf(args[0]))
-                    .replace("<item>", String.valueOf(args[1]))
-                    .replace("<price>", String.format("%.2f", args[2]));
-        }
-        player.sendMessage(MM.deserialize(msg));
-    }
-
     private void sendMessage(Player player, String key) {
-        String msg = configManager.getMainConfig().getPrefix()
-                + configManager.getMainConfig().getMessage(key);
-        player.sendMessage(MM.deserialize(msg));
+        configManager.getMessagesConfig().send(player, key);
     }
 
     private void sendTransactionMessage(Player player, TransactionResult result) {
