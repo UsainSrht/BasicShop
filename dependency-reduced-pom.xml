@@ -42,11 +42,6 @@
             <configuration>
               <createDependencyReducedPom>true</createDependencyReducedPom>
               <minimizeJar>false</minimizeJar>
-              <artifactSet>
-                <excludes>
-                  <exclude>me.usainsrht.itemapi:*</exclude>
-                </excludes>
-              </artifactSet>
               <relocations>
                 <relocation>
                   <pattern>space.arim.morepaperlib</pattern>
@@ -60,6 +55,10 @@
                   <pattern>me.usainsrht.yamlmessage</pattern>
                   <shadedPattern>me.usainsrht.basicshop.libs.yamlmessage</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>me.usainsrht.itemapi</pattern>
+                  <shadedPattern>me.usainsrht.basicshop.libs.itemapi</shadedPattern>
+                </relocation>
               </relocations>
             </configuration>
           </execution>
@@ -68,22 +67,22 @@
           <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
-            <version>9.7.1</version>
+            <version>9.8</version>
           </dependency>
           <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm-commons</artifactId>
-            <version>9.7.1</version>
+            <version>9.8</version>
           </dependency>
           <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm-tree</artifactId>
-            <version>9.7.1</version>
+            <version>9.8</version>
           </dependency>
           <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm-analysis</artifactId>
-            <version>9.7.1</version>
+            <version>9.8</version>
           </dependency>
         </dependencies>
       </plugin>
@@ -113,18 +112,6 @@
       <artifactId>paper-api</artifactId>
       <version>26.1.2.build.64-stable</version>
       <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>me.usainsrht.itemapi</groupId>
-      <artifactId>yamlitem</artifactId>
-      <version>1.0.4</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>me.usainsrht.itemapi</groupId>
-      <artifactId>itemtext</artifactId>
-      <version>1.0.4</version>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.github.MilkBowl</groupId>

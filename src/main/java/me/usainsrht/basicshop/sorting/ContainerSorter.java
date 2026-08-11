@@ -11,6 +11,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -73,7 +74,7 @@ public final class ContainerSorter {
         ItemStack[] sortedContents = calculateSortedContents(consolidated, profile, rows, cols, totalSize);
 
         // Pass 4: Checksum safety validation
-        Map<ItemKey, Integer> sortedChecksum = buildChecksum(List.of(sortedContents));
+        Map<ItemKey, Integer> sortedChecksum = buildChecksum(Arrays.asList(sortedContents));
         if (!checksumMatches(originalChecksum, sortedChecksum)) {
             // Fallback: tight packed sort without gaps to guarantee no item loss
             sortedContents = createFallbackTightSort(consolidated, totalSize);
@@ -366,11 +367,7 @@ public final class ContainerSorter {
 
         // Sort items within each sub-category
         for (List<ItemStack> groupList : groups.values()) {
-            groupList.sort((a, b) -> {
-                int cmp = a.getType().name().compareTo(b.getType().name());
-                if (cmp != 0) return cmp;
-                return Integer.compare(b.getAmount(), a.getAmount());
-            });
+            groupList.sort(ContainerSorter::compareItems);
         }
 
         int currRow = 0;
@@ -447,9 +444,7 @@ public final class ContainerSorter {
             Category catA = ItemCategorizer.getCategory(a);
             Category catB = ItemCategorizer.getCategory(b);
             if (catA != catB) return Integer.compare(catA.ordinal(), catB.ordinal());
-            int matCmp = a.getType().name().compareTo(b.getType().name());
-            if (matCmp != 0) return matCmp;
-            return Integer.compare(b.getAmount(), a.getAmount());
+            return compareItems(a, b);
         });
 
         ItemStack[] array = new ItemStack[totalSize];
@@ -457,6 +452,68 @@ public final class ContainerSorter {
             array[i] = sorted.get(i);
         }
         return array;
+    }
+
+    /**
+     * Compares two item stacks to group similar items together.
+     */
+    public static int compareItems(ItemStack a, ItemStack b) {
+        if (a == null && b == null) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+
+        Material matA = a.getType();
+        Material matB = b.getType();
+
+        // 1. Wood Items comparison (variant rank -> species -> name -> amount)
+        boolean woodA = ItemCategorizer.isWood(matA);
+        boolean woodB = ItemCategorizer.isWood(matB);
+        if (woodA && woodB) {
+            int varRankA = ItemCategorizer.getWoodVariantRank(matA);
+            int varRankB = ItemCategorizer.getWoodVariantRank(matB);
+            if (varRankA != varRankB) {
+                return Integer.compare(varRankA, varRankB);
+            }
+            int speciesA = ItemCategorizer.getWoodSpeciesRank(matA);
+            int speciesB = ItemCategorizer.getWoodSpeciesRank(matB);
+            if (speciesA != speciesB) {
+                return Integer.compare(speciesA, speciesB);
+            }
+        }
+
+        // 2. Colored Blocks comparison (family rank -> color index -> name -> amount)
+        boolean colA = ItemCategorizer.isColoredBlock(matA);
+        boolean colB = ItemCategorizer.isColoredBlock(matB);
+        if (colA && colB) {
+            int famA = ItemCategorizer.getColorFamilyRank(matA);
+            int famB = ItemCategorizer.getColorFamilyRank(matB);
+            if (famA != famB) {
+                return Integer.compare(famA, famB);
+            }
+            int colorA = ItemCategorizer.getColorIndex(matA);
+            int colorB = ItemCategorizer.getColorIndex(matB);
+            if (colorA != colorB) {
+                return Integer.compare(colorA, colorB);
+            }
+        }
+
+        // 3. Stone Variants comparison (variant rank -> name -> amount)
+        boolean stoneA = ItemCategorizer.isStone(matA);
+        boolean stoneB = ItemCategorizer.isStone(matB);
+        if (stoneA && stoneB) {
+            int rankA = ItemCategorizer.getStoneVariantRank(matA);
+            int rankB = ItemCategorizer.getStoneVariantRank(matB);
+            if (rankA != rankB) {
+                return Integer.compare(rankA, rankB);
+            }
+        }
+
+        // 4. Default material name comparison
+        int matCmp = matA.name().compareTo(matB.name());
+        if (matCmp != 0) return matCmp;
+
+        // 5. Stack size descending
+        return Integer.compare(b.getAmount(), a.getAmount());
     }
 
     /**

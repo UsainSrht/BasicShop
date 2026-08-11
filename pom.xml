@@ -143,22 +143,22 @@
                     <dependency>
                         <groupId>org.ow2.asm</groupId>
                         <artifactId>asm</artifactId>
-                        <version>9.7.1</version>
+                        <version>9.8</version>
                     </dependency>
                     <dependency>
                         <groupId>org.ow2.asm</groupId>
                         <artifactId>asm-commons</artifactId>
-                        <version>9.7.1</version>
+                        <version>9.8</version>
                     </dependency>
                     <dependency>
                         <groupId>org.ow2.asm</groupId>
                         <artifactId>asm-tree</artifactId>
-                        <version>9.7.1</version>
+                        <version>9.8</version>
                     </dependency>
                     <dependency>
                         <groupId>org.ow2.asm</groupId>
                         <artifactId>asm-analysis</artifactId>
-                        <version>9.7.1</version>
+                        <version>9.8</version>
                     </dependency>
                 </dependencies>
                 <executions>
@@ -170,11 +170,6 @@
                         <configuration>
                             <createDependencyReducedPom>true</createDependencyReducedPom>
                             <minimizeJar>false</minimizeJar>
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>me.usainsrht.itemapi:*</exclude>
-                                </excludes>
-                            </artifactSet>
                             <relocations>
                                 <relocation>
                                     <pattern>space.arim.morepaperlib</pattern>
@@ -187,6 +182,10 @@
                                 <relocation>
                                     <pattern>me.usainsrht.yamlmessage</pattern>
                                     <shadedPattern>me.usainsrht.basicshop.libs.yamlmessage</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>me.usainsrht.itemapi</pattern>
+                                    <shadedPattern>me.usainsrht.basicshop.libs.itemapi</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
