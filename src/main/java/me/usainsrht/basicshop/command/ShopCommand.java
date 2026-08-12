@@ -119,7 +119,7 @@ public final class ShopCommand {
                                 sendMessage(player, "no-permission");
                                 return 0;
                             }
-                            sendHelp(player, cmdCfg);
+                            sendHelp(player);
                             return Command.SINGLE_SUCCESS;
                         }))
                 .then(Commands.literal(cmdCfg.sub("reload"))
@@ -205,7 +205,8 @@ public final class ShopCommand {
         }, null);
     }
 
-    private void sendHelp(Player player, MainConfig.CommandsConfig cmdCfg) {
+    private void sendHelp(Player player) {
+        MainConfig.CommandsConfig cmdCfg = configManager.getMainConfig().getCommandsConfig();
         String prefix = configManager.getMessagesConfig().getPrefix();
         String root   = cmdCfg.root();
         player.sendMessage(MM.deserialize(prefix + "<yellow>BasicShop Commands:"));
@@ -272,13 +273,17 @@ public final class ShopCommand {
         if (key != null) {
             configManager.getMessagesConfig().send(player, key);
         } else {
+            int amount = handStack.getAmount();
             double earned = shopAPI.getItemByMaterial(handStack.getType())
-                    .flatMap(si -> si.getSellPrice().isPresent() ? java.util.Optional.of(si.getSellPrice().getAsDouble() * handStack.getAmount()) : java.util.Optional.empty())
+                    .flatMap(si -> si.getSellPrice().isPresent() ? java.util.Optional.of(si.getSellPrice().getAsDouble() * amount) : java.util.Optional.empty())
                     .orElse(0.0);
 
-            Component itemTextComp = ItemText.format(handStack, b -> b.amount(handStack.getAmount()));
+            ItemStack itemStack = handStack.clone();
+            itemStack.setAmount(1);
+
+            Component itemTextComp = ItemText.format(itemStack, b -> b.amount(amount));
             configManager.getMessagesConfig().send(player, "sell-success",
-                    Placeholder.unparsed("amount", String.valueOf(handStack.getAmount())),
+                    Placeholder.unparsed("amount", String.valueOf(amount)),
                     Placeholder.component("item", itemTextComp),
                     Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
         }

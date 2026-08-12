@@ -106,13 +106,15 @@ public final class CategoriesGui extends AbstractShopGui {
                 if (shopItemOpt.isPresent()) {
                     var txResult = shopAPI.sellItem(player, shopItemOpt.get(), cursor.getAmount());
                     if (txResult == TransactionResult.SUCCESS) {
+                        int amount = cursor.getAmount();
                         ItemStack soldStack = cursor.clone();
+                        soldStack.setAmount(1);
                         event.setCursor(new ItemStack(org.bukkit.Material.AIR));
-                        double earned = shopItemOpt.get().getSellPrice().orElse(0) * soldStack.getAmount();
+                        double earned = shopItemOpt.get().getSellPrice().orElse(0) * amount;
 
-                        Component itemTextComp = ItemText.format(soldStack, b -> b.amount(soldStack.getAmount()));
+                        Component itemTextComp = ItemText.format(soldStack, b -> b.amount(amount));
                         configManager.getMessagesConfig().send(player, "sell-success",
-                                Placeholder.unparsed("amount", String.valueOf(soldStack.getAmount())),
+                                Placeholder.unparsed("amount", String.valueOf(amount)),
                                 Placeholder.component("item", itemTextComp),
                                 Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
                     } else {

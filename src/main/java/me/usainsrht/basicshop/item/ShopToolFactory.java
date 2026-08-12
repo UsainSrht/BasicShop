@@ -1,6 +1,7 @@
 package me.usainsrht.basicshop.item;
 
 import me.usainsrht.basicshop.api.model.ShopToolType;
+import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.ToolsConfig;
 import org.bukkit.inventory.meta.components.UseCooldownComponent;
 import net.kyori.adventure.text.Component;
@@ -21,19 +22,19 @@ public final class ShopToolFactory {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
-    private final ToolsConfig toolsConfig;
+    private final ConfigManager configManager;
     private final NamespacedKey toolKey;
     /** When present, auto-sell is disabled (matches legacy {@code custom:autosell} semantics). */
     private final NamespacedKey autoSellDisabledKey;
 
-    public ShopToolFactory(Plugin plugin, ToolsConfig toolsConfig) {
-        this.toolsConfig = toolsConfig;
+    public ShopToolFactory(Plugin plugin, ConfigManager configManager) {
+        this.configManager = configManager;
         this.toolKey = new NamespacedKey(plugin, "shop_tool");
         this.autoSellDisabledKey = new NamespacedKey(plugin, "autosell_disabled");
     }
 
     public ItemStack create(ShopToolType type, int amount) {
-        ToolsConfig.ToolDefinition def = toolsConfig.get(type);
+        ToolsConfig.ToolDefinition def = configManager.getToolsConfig().get(type);
         ItemStack stack = new ItemStack(def.material(), amount);
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {

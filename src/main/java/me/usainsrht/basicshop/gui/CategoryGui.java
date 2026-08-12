@@ -284,7 +284,7 @@ public final class CategoryGui extends AbstractShopGui {
             String key = isBuy ? "buy-success" : "sell-success";
             double price = (isBuy ? item.getBuyPrice().orElse(0) : item.getSellPrice().orElse(0)) * amount;
 
-            ItemStack itemStack = new ItemStack(item.getMaterial(), amount);
+            ItemStack itemStack = new ItemStack(item.getMaterial(), 1);
             Component itemTextComp = ItemText.format(itemStack, b -> b.amount(amount));
 
             configManager.getMessagesConfig().send(player, key,

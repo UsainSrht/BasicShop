@@ -76,7 +76,7 @@ public final class BasicShop extends JavaPlugin {
 
         // 5. API
         shopAPI = new ShopAPIImpl(configManager, economyProvider, analyticsManager, transactionLogger);
-        toolFactory = new ShopToolFactory(this, configManager.getToolsConfig());
+        toolFactory = new ShopToolFactory(this, configManager);
 
         // 6. Listeners
         getServer().getPluginManager().registerEvents(new GuiListener(), this);

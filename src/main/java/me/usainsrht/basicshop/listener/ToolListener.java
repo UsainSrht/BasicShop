@@ -210,7 +210,7 @@ public final class ToolListener implements Listener {
             return;
 
         for (ShopAPI.SoldMaterialLine line : result.lines()) {
-            ItemStack lineStack = new ItemStack(line.material(), line.amount());
+            ItemStack lineStack = new ItemStack(line.material(), 1);
             Component itemTextComp = ItemText.format(lineStack, b -> b.amount(line.amount()));
 
             configManager.getMessagesConfig().send(player, "tool-staff-line",

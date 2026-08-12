@@ -199,7 +199,7 @@ public final class QuickSellGui extends AbstractShopGui {
     private void sendResultMessage(Player player, TransactionResult result, ShopItem shopItem, int amount) {
         if (result == TransactionResult.SUCCESS) {
             double price = shopItem.getSellPrice().orElse(0) * amount;
-            ItemStack itemStack = new ItemStack(shopItem.getMaterial(), amount);
+            ItemStack itemStack = new ItemStack(shopItem.getMaterial(), 1);
             Component itemTextComp = ItemText.format(itemStack, b -> b.amount(amount));
 
             configManager.getMessagesConfig().send(player, "sell-success",
