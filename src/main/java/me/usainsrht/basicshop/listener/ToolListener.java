@@ -127,7 +127,8 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (!player.hasPermission("basicshop.tools.staff"))
             return;
-        if (player.hasCooldown(item))
+        toolFactory.ensureUseCooldown(item, ShopToolType.MONEY_STAFF);
+        if (player.getCooldown(ShopToolType.MONEY_STAFF.getCooldownKey()) > 0)
             return;
 
         Block block = event.getClickedBlock();
@@ -140,7 +141,9 @@ public final class ToolListener implements Listener {
 
         ToolsConfig.ToolDefinition staffDef = configManager.getToolsConfig().get(ShopToolType.MONEY_STAFF);
         if (staffDef != null && staffDef.cooldown() != null && staffDef.cooldown().isCooldownActive()) {
-            player.setCooldown(item, (int) Math.round(staffDef.cooldown().durationSeconds() * 20.0));
+            int ticks = (int) Math.round(staffDef.cooldown().durationSeconds() * 20.0);
+            player.setCooldown(item, ticks);
+            player.setCooldown(ShopToolType.MONEY_STAFF.getCooldownKey(), ticks);
         }
 
         Location location = block.getLocation();
@@ -167,7 +170,8 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (!player.hasPermission("basicshop.tools.sorting_staff"))
             return;
-        if (player.hasCooldown(item))
+        toolFactory.ensureUseCooldown(item, ShopToolType.SORTING_STAFF);
+        if (player.getCooldown(ShopToolType.SORTING_STAFF.getCooldownKey()) > 0)
             return;
 
         Block block = event.getClickedBlock();
@@ -180,7 +184,9 @@ public final class ToolListener implements Listener {
 
         ToolsConfig.ToolDefinition sortingDef = configManager.getToolsConfig().get(ShopToolType.SORTING_STAFF);
         if (sortingDef != null && sortingDef.cooldown() != null && sortingDef.cooldown().isCooldownActive()) {
-            player.setCooldown(item, (int) Math.round(sortingDef.cooldown().durationSeconds() * 20.0));
+            int ticks = (int) Math.round(sortingDef.cooldown().durationSeconds() * 20.0);
+            player.setCooldown(item, ticks);
+            player.setCooldown(ShopToolType.SORTING_STAFF.getCooldownKey(), ticks);
         }
 
         Location location = block.getLocation();
@@ -244,7 +250,8 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (!player.hasPermission("basicshop.tools.hoe"))
             return;
-        if (player.hasCooldown(item))
+        toolFactory.ensureUseCooldown(item, ShopToolType.MONEY_HOE);
+        if (player.getCooldown(ShopToolType.MONEY_HOE.getCooldownKey()) > 0)
             return;
 
         boolean autoSellEnabled = toolFactory.toggleAutoSell(item);
@@ -252,7 +259,9 @@ public final class ToolListener implements Listener {
 
         ToolsConfig.ToolDefinition hoeDef = configManager.getToolsConfig().get(ShopToolType.MONEY_HOE);
         if (hoeDef != null && hoeDef.cooldown() != null && hoeDef.cooldown().isCooldownActive()) {
-            player.setCooldown(item, (int) Math.round(hoeDef.cooldown().durationSeconds() * 20.0));
+            int ticks = (int) Math.round(hoeDef.cooldown().durationSeconds() * 20.0);
+            player.setCooldown(item, ticks);
+            player.setCooldown(ShopToolType.MONEY_HOE.getCooldownKey(), ticks);
         }
 
         String key = autoSellEnabled ? "tool-hoe-autosell-on" : "tool-hoe-autosell-off";

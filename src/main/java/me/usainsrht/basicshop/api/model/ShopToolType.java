@@ -1,5 +1,7 @@
 package me.usainsrht.basicshop.api.model;
 
+import org.bukkit.NamespacedKey;
+
 import java.util.Locale;
 import java.util.Optional;
 
@@ -13,13 +15,19 @@ public enum ShopToolType {
     SORTING_STAFF("sorting_staff");
 
     private final String id;
+    private final NamespacedKey cooldownKey;
 
     ShopToolType(String id) {
         this.id = id;
+        this.cooldownKey = new NamespacedKey("basicshop", id);
     }
 
     public String getId() {
         return id;
+    }
+
+    public NamespacedKey getCooldownKey() {
+        return cooldownKey;
     }
 
     public static Optional<ShopToolType> fromId(String id) {

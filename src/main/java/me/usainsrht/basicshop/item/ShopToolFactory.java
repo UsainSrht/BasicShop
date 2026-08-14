@@ -49,16 +49,44 @@ public final class ShopToolFactory {
                 meta.setEnchantmentGlintOverride(def.enchantmentGlintOverride());
             }
             meta.getPersistentDataContainer().set(toolKey, PersistentDataType.STRING, type.getId());
+            UseCooldownComponent cooldownComponent = meta.getUseCooldown();
+            cooldownComponent.setCooldownGroup(type.getCooldownKey());
             ToolsConfig.ToolCooldownConfig cd = def.cooldown();
             if (cd != null && cd.isCooldownActive()) {
-                NamespacedKey groupKey = new NamespacedKey("basicshop", type.getId());
-                UseCooldownComponent cooldownComponent = meta.getUseCooldown();
                 cooldownComponent.setCooldownSeconds((float) cd.durationSeconds());
-                cooldownComponent.setCooldownGroup(groupKey);
             }
+            meta.setUseCooldown(cooldownComponent);
             stack.setItemMeta(meta);
         }
         return stack;
+    }
+
+    public void ensureUseCooldown(ItemStack item, ShopToolType type) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) return;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+
+        UseCooldownComponent cooldownComponent = meta.getUseCooldown();
+        boolean modified = false;
+
+        if (!type.getCooldownKey().equals(cooldownComponent.getCooldownGroup())) {
+            cooldownComponent.setCooldownGroup(type.getCooldownKey());
+            modified = true;
+        }
+
+        ToolsConfig.ToolDefinition def = configManager.getToolsConfig().get(type);
+        if (def != null && def.cooldown() != null && def.cooldown().isCooldownActive()) {
+            float seconds = (float) def.cooldown().durationSeconds();
+            if (cooldownComponent.getCooldownSeconds() != seconds) {
+                cooldownComponent.setCooldownSeconds(seconds);
+                modified = true;
+            }
+        }
+
+        if (modified || !meta.hasUseCooldown()) {
+            meta.setUseCooldown(cooldownComponent);
+            item.setItemMeta(meta);
+        }
     }
 
     public ShopToolType getToolType(ItemStack stack) {
