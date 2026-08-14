@@ -1,187 +1,129 @@
 package me.usainsrht.basicshop.config;
 
 import me.usainsrht.basicshop.api.model.ShopToolType;
+import me.usainsrht.itemapi.yamlitem.YamlItem;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Registry;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.enchantments.Enchantment;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Parsed tool definitions from config.yml ({@code tools} section).
+ * All item attributes including use-cooldown are parsed using {@link YamlItem#parse(ConfigurationSection)}.
  */
 public final class ToolsConfig {
 
-    public record ToolCooldownConfig(
-            boolean enabled,
-            double durationSeconds
-    ) {
-        public boolean isCooldownActive() {
-            return enabled && durationSeconds > 0;
-        }
-    }
+    private static final Logger LOGGER = Logger.getLogger(ToolsConfig.class.getName());
 
     public record ToolDefinition(
-            Material material,
-            String name,
-            List<String> lore,
-            Map<Enchantment, Integer> enchants,
-            Boolean enchantmentGlintOverride,
-            ToolCooldownConfig cooldown
+            ItemStack itemStack
     ) {}
-
-    private static ToolDefinition defaultFor(ShopToolType type) {
-        return switch (type) {
-            case MONEY_STAFF -> new ToolDefinition(
-                    Material.BLAZE_ROD,
-                    "<gold>Money Staff",
-                    List.of("<gray>Click a container to sell its contents."),
-                    Map.of(),
-                    true,
-                    new ToolCooldownConfig(true, 1.0)
-            );
-            case MONEY_HOE -> new ToolDefinition(
-                    Material.GOLDEN_HOE,
-                    "<gold>Money Hoe",
-                    List.of(
-                            "<gray>Break mature crops to sell drops and replant.",
-                            "<gray>Click air to toggle auto-sell."
-                    ),
-                    buildDefaultHoeEnchants(),
-                    null,
-                    new ToolCooldownConfig(true, 0.5)
-            );
-            case SORTING_STAFF -> new ToolDefinition(
-                    Material.AMETHYST_SHARD,
-                    "<light_purple>Sorting Staff",
-                    List.of("<gray>Click a container to sort its contents."),
-                    Map.of(),
-                    true,
-                    new ToolCooldownConfig(true, 2.0)
-            );
-        };
-    }
 
     private final Map<ShopToolType, ToolDefinition> tools;
 
     public ToolsConfig(FileConfiguration cfg) {
         Map<ShopToolType, ToolDefinition> parsed = new EnumMap<>(ShopToolType.class);
-        ConfigurationSection section = cfg.getConfigurationSection("tools");
+        ConfigurationSection section = cfg != null ? cfg.getConfigurationSection("tools") : null;
 
         for (ShopToolType type : ShopToolType.values()) {
-            ToolDefinition fallback = defaultFor(type);
             ConfigurationSection sub = section != null ? section.getConfigurationSection(type.getId()) : null;
+            ItemStack stack = null;
+            if (sub != null) {
+                try {
+                    stack = YamlItem.parse(sub);
+                } catch (Throwable t) {
+                    LOGGER.log(Level.WARNING, "Failed to parse tool configuration section '" + type.getId() + "': " + t.getMessage(), t);
+                }
+            }
+            if (stack == null || stack.getType().isAir()) {
+                try {
+                    stack = createDefaultItemStack(type);
+                } catch (Throwable t) {
+                    LOGGER.log(Level.WARNING, "Failed to create default item for tool '" + type.getId() + "': " + t.getMessage(), t);
+                }
+            }
+            if (stack == null || stack.getType().isAir()) {
+                stack = new ItemStack(getDefaultMaterial(type));
+            }
 
-            Material material = parseMaterial(
-                    sub != null ? sub.getString("material") : null,
-                    fallback.material()
-            );
-            String name = sub != null ? sub.getString("name", fallback.name()) : fallback.name();
-            List<String> lore = sub != null ? sub.getStringList("lore") : fallback.lore();
-            if (lore.isEmpty()) lore = fallback.lore();
-            Map<Enchantment, Integer> enchants = parseEnchants(sub, fallback.enchants());
-            Boolean glintOverride = parseGlintOverride(sub, fallback.enchantmentGlintOverride());
-            ToolCooldownConfig cooldown = parseCooldown(sub, fallback.cooldown());
-
-            parsed.put(type, new ToolDefinition(
-                    material,
-                    name,
-                    Collections.unmodifiableList(lore),
-                    enchants,
-                    glintOverride,
-                    cooldown
-            ));
+            parsed.put(type, new ToolDefinition(stack));
         }
 
         this.tools = Collections.unmodifiableMap(parsed);
     }
 
     public ToolDefinition get(ShopToolType type) {
-        return tools.get(type);
+        if (type == null) return new ToolDefinition(new ItemStack(Material.BLAZE_ROD));
+        ToolDefinition def = tools.get(type);
+        if (def == null || def.itemStack() == null) {
+            def = new ToolDefinition(new ItemStack(getDefaultMaterial(type)));
+        }
+        return def;
     }
 
     public Map<ShopToolType, ToolDefinition> getAll() {
         return tools;
     }
 
-    private static Material parseMaterial(String name, Material fallback) {
-        if (name == null || name.isBlank()) return fallback;
-        Material mat = Material.matchMaterial(name.toUpperCase());
-        return mat != null ? mat : fallback;
+    public static Material getDefaultMaterial(ShopToolType type) {
+        if (type == null) return Material.BLAZE_ROD;
+        return switch (type) {
+            case MONEY_STAFF -> Material.BLAZE_ROD;
+            case MONEY_HOE -> Material.GOLDEN_HOE;
+            case SORTING_STAFF -> Material.AMETHYST_SHARD;
+        };
     }
 
-    private static Map<Enchantment, Integer> buildDefaultHoeEnchants() {
-        Map<Enchantment, Integer> map = new LinkedHashMap<>();
-        putEnchant(map, "efficiency", 5);
-        putEnchant(map, "unbreaking", 3);
-        putEnchant(map, "fortune", 3);
-        putEnchant(map, "mending", 1);
-        return Collections.unmodifiableMap(map);
-    }
-
-    private static Map<Enchantment, Integer> parseEnchants(ConfigurationSection sub, Map<Enchantment, Integer> fallback) {
-        if (sub == null || !sub.isConfigurationSection("enchants")) {
-            return fallback;
-        }
-        ConfigurationSection enchantsSection = sub.getConfigurationSection("enchants");
-        if (enchantsSection == null || enchantsSection.getKeys(false).isEmpty()) {
-            return fallback;
-        }
-
-        Map<Enchantment, Integer> parsed = new LinkedHashMap<>();
-        for (String key : enchantsSection.getKeys(false)) {
-            Enchantment enchant = resolveEnchantment(key);
-            if (enchant == null) continue;
-            int level = enchantsSection.getInt(key, 1);
-            if (level > 0) {
-                parsed.put(enchant, level);
+    private static ItemStack createDefaultItemStack(ShopToolType type) {
+        YamlConfiguration config = new YamlConfiguration();
+        switch (type) {
+            case MONEY_STAFF -> {
+                config.set("material", "BLAZE_ROD");
+                config.set("name", "<gold>Money Staff");
+                config.set("lore", List.of("<gray>Click a container to sell its contents."));
+                config.set("enchantment-glint-override", true);
+                config.set("use-cooldown.cooldown_group", "basicshop:money_staff");
+                config.set("use-cooldown.seconds", 1.0);
+            }
+            case MONEY_HOE -> {
+                config.set("material", "GOLDEN_HOE");
+                config.set("name", "<gold>Money Hoe");
+                config.set("lore", List.of(
+                        "<gray>Break mature crops to sell drops and replant.",
+                        "<gray>Click air to toggle auto-sell."
+                ));
+                config.set("enchants.efficiency", 5);
+                config.set("enchants.unbreaking", 3);
+                config.set("enchants.fortune", 3);
+                config.set("enchants.mending", 1);
+                config.set("use-cooldown.cooldown_group", "basicshop:money_hoe");
+                config.set("use-cooldown.seconds", 0.5);
+            }
+            case SORTING_STAFF -> {
+                config.set("material", "AMETHYST_SHARD");
+                config.set("name", "<light_purple>Sorting Staff");
+                config.set("lore", List.of("<gray>Click a container to sort its contents."));
+                config.set("enchantment-glint-override", true);
+                config.set("use-cooldown.cooldown_group", "basicshop:sorting_staff");
+                config.set("use-cooldown.seconds", 2.0);
             }
         }
-        return parsed.isEmpty() ? fallback : Collections.unmodifiableMap(parsed);
-    }
-
-    private static Boolean parseGlintOverride(ConfigurationSection sub, Boolean fallback) {
-        if (sub == null || !sub.contains("enchantment-glint-override")) {
-            return fallback;
-        }
-        return sub.getBoolean("enchantment-glint-override");
-    }
-
-    private static ToolCooldownConfig parseCooldown(ConfigurationSection sub, ToolCooldownConfig fallback) {
-        if (sub == null || !sub.isConfigurationSection("cooldown")) {
-            return fallback;
-        }
-        ConfigurationSection cdSec = sub.getConfigurationSection("cooldown");
-        if (cdSec == null) return fallback;
-
-        boolean enabled = cdSec.getBoolean("enabled", fallback.enabled());
-        double duration = cdSec.getDouble("duration", fallback.durationSeconds());
-        return new ToolCooldownConfig(enabled, duration);
-    }
-
-    private static void putEnchant(Map<Enchantment, Integer> map, String key, int level) {
-        Enchantment enchant = resolveEnchantment(key);
-        if (enchant != null) {
-            map.put(enchant, level);
-        }
-    }
-
-    private static Enchantment resolveEnchantment(String key) {
-        if (key == null || key.isBlank()) return null;
-
-        String normalized = key.toLowerCase().replace('_', '-');
-        Enchantment enchant = Registry.ENCHANTMENT.get(NamespacedKey.minecraft(normalized));
-        if (enchant != null) return enchant;
-
-        return Registry.ENCHANTMENT.get(NamespacedKey.fromString(key));
+        try {
+            ItemStack parsed = YamlItem.parse(config);
+            if (parsed != null && !parsed.getType().isAir()) {
+                return parsed;
+            }
+        } catch (Throwable ignored) {}
+        return new ItemStack(getDefaultMaterial(type));
     }
 
     public static Optional<ShopToolType> resolveToolArgument(String input) {

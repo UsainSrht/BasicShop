@@ -61,13 +61,13 @@
         <dependency>
             <groupId>me.usainsrht.itemapi</groupId>
             <artifactId>yamlitem</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>me.usainsrht.itemapi</groupId>
             <artifactId>itemtext</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
             <scope>compile</scope>
         </dependency>
 

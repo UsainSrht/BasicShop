@@ -52,8 +52,8 @@ public final class ConfigManager {
             saveDefault("categories.yml");
             saveDefault("quicksell.yml");
             saveDefaultCategories();
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save default configuration files!", e);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.SEVERE, "Could not save default configuration files!", t);
         }
 
         try {
@@ -61,8 +61,8 @@ public final class ConfigManager {
             FileConfiguration mainCfg = plugin.getConfig();
             this.mainConfig = new MainConfig(mainCfg);
             this.toolsConfig = new ToolsConfig(mainCfg);
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not load config.yml!", e);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load config.yml!", t);
             if (this.mainConfig == null) {
                 this.mainConfig = new MainConfig(new YamlConfiguration());
             }
@@ -74,8 +74,8 @@ public final class ConfigManager {
         try {
             FileConfiguration msgCfg = loadYml("messages.yml");
             this.messagesConfig = new MessagesConfig(msgCfg);
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not load messages.yml!", e);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load messages.yml!", t);
             if (this.messagesConfig == null) {
                 this.messagesConfig = new MessagesConfig(new YamlConfiguration());
             }
@@ -84,8 +84,8 @@ public final class ConfigManager {
         try {
             FileConfiguration catsCfg = loadYml("categories.yml");
             this.categoriesConfig = new CategoriesConfig(catsCfg);
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not load categories.yml!", e);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load categories.yml!", t);
             if (this.categoriesConfig == null) {
                 this.categoriesConfig = new CategoriesConfig(new YamlConfiguration());
             }
@@ -94,8 +94,8 @@ public final class ConfigManager {
         try {
             FileConfiguration quickSellCfg = loadYml("quicksell.yml");
             this.quickSellConfig = new QuickSellConfig(quickSellCfg);
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not load quicksell.yml!", e);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load quicksell.yml!", t);
             if (this.quickSellConfig == null) {
                 this.quickSellConfig = new QuickSellConfig(new YamlConfiguration());
             }
@@ -103,14 +103,14 @@ public final class ConfigManager {
 
         try {
             this.categories = loadCategories();
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not load shop categories!", e);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load shop categories!", t);
             if (this.categories == null) {
                 this.categories = new ArrayList<>();
             }
         }
 
-        plugin.getLogger().info("Loaded " + categories.size() + " categories.");
+        plugin.getLogger().info("Loaded " + (categories != null ? categories.size() : 0) + " categories.");
     }
 
     // -------------------------------------------------------------------------
@@ -179,11 +179,24 @@ public final class ConfigManager {
                 List<ShopItem> items = parseItems(id, (YamlConfiguration) cfg);
 
                 CategoriesConfig.CategoryEntry entry = entryMap.get(id);
-                String displayName = entry != null ? entry.displayName() : cfg.getString("title", id);
-                String guiTitle    = cfg.getString("title", displayName);
-                Material iconMat   = entry != null ? entry.material() : Material.CHEST;
-                int slot           = entry != null ? entry.slot() : 0;
-                List<String> lore  = entry != null ? entry.lore() : Collections.emptyList();
+                String displayName = cfg.contains("name") ? cfg.getString("name")
+                        : (cfg.contains("title") ? cfg.getString("title")
+                        : (entry != null ? entry.displayName() : id));
+
+                String guiTitle = cfg.contains("title") ? cfg.getString("title")
+                        : (entry != null ? entry.displayName() : displayName);
+
+                Material iconMat = cfg.contains("material")
+                        ? parseMaterial(cfg.getString("material"), entry != null ? entry.material() : Material.CHEST)
+                        : (entry != null ? entry.material() : Material.CHEST);
+
+                int slot = cfg.contains("slot")
+                        ? cfg.getInt("slot")
+                        : (entry != null ? entry.slot() : 0);
+
+                List<String> lore = cfg.contains("lore")
+                        ? cfg.getStringList("lore")
+                        : (entry != null ? entry.lore() : Collections.emptyList());
 
                 result.add(new ShopCategory(id, displayName, guiTitle, iconMat, slot, lore, items));
             } catch (Exception e) {
@@ -192,6 +205,12 @@ public final class ConfigManager {
         }
 
         return Collections.unmodifiableList(result);
+    }
+
+    private static Material parseMaterial(String name, Material fallback) {
+        if (name == null || name.isBlank()) return fallback;
+        Material mat = Material.matchMaterial(name.toUpperCase());
+        return mat != null ? mat : fallback;
     }
 
     private List<ShopItem> parseItems(String categoryId, YamlConfiguration cfg) {
@@ -241,10 +260,45 @@ public final class ConfigManager {
     // Accessors
     // -------------------------------------------------------------------------
 
-    public MainConfig getMainConfig()             { return mainConfig; }
-    public MessagesConfig getMessagesConfig()     { return messagesConfig; }
-    public ToolsConfig getToolsConfig()           { return toolsConfig; }
-    public CategoriesConfig getCategoriesConfig() { return categoriesConfig; }
-    public QuickSellConfig getQuickSellConfig()   { return quickSellConfig; }
-    public List<ShopCategory> getCategories()     { return categories; }
+    public MainConfig getMainConfig() {
+        if (mainConfig == null) {
+            mainConfig = new MainConfig(new YamlConfiguration());
+        }
+        return mainConfig;
+    }
+
+    public MessagesConfig getMessagesConfig() {
+        if (messagesConfig == null) {
+            messagesConfig = new MessagesConfig(new YamlConfiguration());
+        }
+        return messagesConfig;
+    }
+
+    public ToolsConfig getToolsConfig() {
+        if (toolsConfig == null) {
+            toolsConfig = new ToolsConfig(new YamlConfiguration());
+        }
+        return toolsConfig;
+    }
+
+    public CategoriesConfig getCategoriesConfig() {
+        if (categoriesConfig == null) {
+            categoriesConfig = new CategoriesConfig(new YamlConfiguration());
+        }
+        return categoriesConfig;
+    }
+
+    public QuickSellConfig getQuickSellConfig() {
+        if (quickSellConfig == null) {
+            quickSellConfig = new QuickSellConfig(new YamlConfiguration());
+        }
+        return quickSellConfig;
+    }
+
+    public List<ShopCategory> getCategories() {
+        if (categories == null) {
+            categories = new ArrayList<>();
+        }
+        return categories;
+    }
 }

@@ -29,9 +29,9 @@ tools:
       - "<gray>Click a container to sell its contents."
     # Force the enchantment glint without applying real enchantments
     enchantment-glint-override: true
-    cooldown:
-      enabled: true
-      duration: 1.0
+    use-cooldown:
+      cooldown_group: basicshop:money_staff
+      seconds: 1.0
   money_hoe:
     material: GOLDEN_HOE
     name: "<gold>Money Hoe"
@@ -43,18 +43,18 @@ tools:
       unbreaking: 3
       fortune: 3
       mending: 1
-    cooldown:
-      enabled: true
-      duration: 0.5
+    use-cooldown:
+      cooldown_group: basicshop:money_hoe
+      seconds: 0.5
   sorting_staff:
     material: AMETHYST_SHARD
     name: "<light_purple>Sorting Staff"
     lore:
       - "<gray>Click a container to sort its contents."
     enchantment-glint-override: true
-    cooldown:
-      enabled: true
-      duration: 2.0
+    use-cooldown:
+      cooldown_group: basicshop:sorting_staff
+      seconds: 2.0
 
 # Global toggles
 global:

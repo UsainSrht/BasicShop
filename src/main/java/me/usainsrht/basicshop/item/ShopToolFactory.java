@@ -3,24 +3,18 @@ package me.usainsrht.basicshop.item;
 import me.usainsrht.basicshop.api.model.ShopToolType;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.ToolsConfig;
-import org.bukkit.inventory.meta.components.UseCooldownComponent;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.components.UseCooldownComponent;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
-
-import java.util.List;
 
 /**
  * Builds and identifies tagged shop tool items.
  */
 public final class ShopToolFactory {
-
-    private static final MiniMessage MM = MiniMessage.miniMessage();
 
     private final ConfigManager configManager;
     private final NamespacedKey toolKey;
@@ -34,28 +28,25 @@ public final class ShopToolFactory {
     }
 
     public ItemStack create(ShopToolType type, int amount) {
-        ToolsConfig.ToolDefinition def = configManager.getToolsConfig().get(type);
-        ItemStack stack = new ItemStack(def.material(), amount);
+        if (type == null) {
+            return new ItemStack(org.bukkit.Material.BLAZE_ROD, Math.max(1, amount));
+        }
+        ToolsConfig toolsConfig = configManager != null ? configManager.getToolsConfig() : null;
+        ToolsConfig.ToolDefinition def = toolsConfig != null ? toolsConfig.get(type) : null;
+        org.bukkit.Material fallbackMat = ToolsConfig.getDefaultMaterial(type);
+        ItemStack stack = (def != null && def.itemStack() != null && !def.itemStack().getType().isAir())
+                ? def.itemStack().clone()
+                : new ItemStack(fallbackMat);
+        stack.setAmount(amount);
+
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.displayName(withoutDefaultItalic(MM.deserialize(def.name())));
-            List<Component> lore = def.lore().stream()
-                    .map(MM::deserialize)
-                    .map(ShopToolFactory::withoutDefaultItalic)
-                    .toList();
-            meta.lore(lore);
-            def.enchants().forEach((enchant, level) -> meta.addEnchant(enchant, level, true));
-            if (def.enchantmentGlintOverride() != null) {
-                meta.setEnchantmentGlintOverride(def.enchantmentGlintOverride());
-            }
             meta.getPersistentDataContainer().set(toolKey, PersistentDataType.STRING, type.getId());
             UseCooldownComponent cooldownComponent = meta.getUseCooldown();
-            cooldownComponent.setCooldownGroup(type.getCooldownKey());
-            ToolsConfig.ToolCooldownConfig cd = def.cooldown();
-            if (cd != null && cd.isCooldownActive()) {
-                cooldownComponent.setCooldownSeconds((float) cd.durationSeconds());
+            if (cooldownComponent.getCooldownGroup() == null) {
+                cooldownComponent.setCooldownGroup(type.getCooldownKey());
+                meta.setUseCooldown(cooldownComponent);
             }
-            meta.setUseCooldown(cooldownComponent);
             stack.setItemMeta(meta);
         }
         return stack;
@@ -67,25 +58,25 @@ public final class ShopToolFactory {
         if (meta == null) return;
 
         UseCooldownComponent cooldownComponent = meta.getUseCooldown();
-        boolean modified = false;
-
-        if (!type.getCooldownKey().equals(cooldownComponent.getCooldownGroup())) {
+        if (cooldownComponent.getCooldownGroup() == null) {
             cooldownComponent.setCooldownGroup(type.getCooldownKey());
-            modified = true;
-        }
-
-        ToolsConfig.ToolDefinition def = configManager.getToolsConfig().get(type);
-        if (def != null && def.cooldown() != null && def.cooldown().isCooldownActive()) {
-            float seconds = (float) def.cooldown().durationSeconds();
-            if (cooldownComponent.getCooldownSeconds() != seconds) {
-                cooldownComponent.setCooldownSeconds(seconds);
-                modified = true;
-            }
-        }
-
-        if (modified || !meta.hasUseCooldown()) {
             meta.setUseCooldown(cooldownComponent);
             item.setItemMeta(meta);
+        }
+    }
+
+    public void applyCooldown(Player player, ItemStack item, ShopToolType type) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) return;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || !meta.hasUseCooldown()) return;
+
+        UseCooldownComponent cdComp = meta.getUseCooldown();
+        float seconds = cdComp.getCooldownSeconds();
+        if (seconds > 0) {
+            int ticks = Math.round(seconds * 20.0f);
+            player.setCooldown(item, ticks);
+            NamespacedKey group = cdComp.getCooldownGroup() != null ? cdComp.getCooldownGroup() : type.getCooldownKey();
+            player.setCooldown(group, ticks);
         }
     }
 
@@ -134,9 +125,5 @@ public final class ShopToolFactory {
 
     public NamespacedKey getToolKey() {
         return toolKey;
-    }
-
-    private static Component withoutDefaultItalic(Component component) {
-        return component.decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 }

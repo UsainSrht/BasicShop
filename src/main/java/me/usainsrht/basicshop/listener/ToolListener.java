@@ -139,12 +139,7 @@ public final class ToolListener implements Listener {
         if (!(state instanceof Container))
             return;
 
-        ToolsConfig.ToolDefinition staffDef = configManager.getToolsConfig().get(ShopToolType.MONEY_STAFF);
-        if (staffDef != null && staffDef.cooldown() != null && staffDef.cooldown().isCooldownActive()) {
-            int ticks = (int) Math.round(staffDef.cooldown().durationSeconds() * 20.0);
-            player.setCooldown(item, ticks);
-            player.setCooldown(ShopToolType.MONEY_STAFF.getCooldownKey(), ticks);
-        }
+        toolFactory.applyCooldown(player, item, ShopToolType.MONEY_STAFF);
 
         Location location = block.getLocation();
         morePaperLib.scheduling().regionSpecificScheduler(location).runDelayed(
@@ -182,12 +177,7 @@ public final class ToolListener implements Listener {
         if (!(state instanceof Container))
             return;
 
-        ToolsConfig.ToolDefinition sortingDef = configManager.getToolsConfig().get(ShopToolType.SORTING_STAFF);
-        if (sortingDef != null && sortingDef.cooldown() != null && sortingDef.cooldown().isCooldownActive()) {
-            int ticks = (int) Math.round(sortingDef.cooldown().durationSeconds() * 20.0);
-            player.setCooldown(item, ticks);
-            player.setCooldown(ShopToolType.SORTING_STAFF.getCooldownKey(), ticks);
-        }
+        toolFactory.applyCooldown(player, item, ShopToolType.SORTING_STAFF);
 
         Location location = block.getLocation();
         morePaperLib.scheduling().regionSpecificScheduler(location).run(() -> {
@@ -257,12 +247,7 @@ public final class ToolListener implements Listener {
         boolean autoSellEnabled = toolFactory.toggleAutoSell(item);
         player.getInventory().setItemInMainHand(item);
 
-        ToolsConfig.ToolDefinition hoeDef = configManager.getToolsConfig().get(ShopToolType.MONEY_HOE);
-        if (hoeDef != null && hoeDef.cooldown() != null && hoeDef.cooldown().isCooldownActive()) {
-            int ticks = (int) Math.round(hoeDef.cooldown().durationSeconds() * 20.0);
-            player.setCooldown(item, ticks);
-            player.setCooldown(ShopToolType.MONEY_HOE.getCooldownKey(), ticks);
-        }
+        toolFactory.applyCooldown(player, item, ShopToolType.MONEY_HOE);
 
         String key = autoSellEnabled ? "tool-hoe-autosell-on" : "tool-hoe-autosell-off";
         configManager.getMessagesConfig().send(player, key);
