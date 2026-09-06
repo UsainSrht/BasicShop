@@ -116,6 +116,38 @@ public class ShopEventsTest {
     }
 
     @Test
+    public void testAllEventsAreSynchronous() {
+        Player player = mock(Player.class);
+        ShopItem item = mock(ShopItem.class);
+        ShopCategory category = mock(ShopCategory.class);
+        Block block = mock(Block.class);
+        Container container = mock(Container.class);
+        ItemStack tool = mock(ItemStack.class);
+        CommandSender sender = mock(CommandSender.class);
+        TransactionRecord record = mock(TransactionRecord.class);
+
+        List<org.bukkit.event.Event> events = List.of(
+                new ShopPreTransactionEvent(player, item, category, TransactionType.BUY, 5, 50.0),
+                new ShopPostTransactionEvent(player, item, category, TransactionType.BUY, 5, 50.0, record),
+                new ShopPreBulkSellEvent(player, BulkSellSource.QUICK_SELL_INVENTORY, null),
+                new ShopBulkSellEvent(player, BulkSellSource.QUICK_SELL_INVENTORY, 10, 100.0, List.of()),
+                new ShopOpenEvent(player, ShopViewType.CATEGORIES, null),
+                new ShopReloadEvent(sender),
+                new MoneyStaffUseEvent(player, tool, block, container),
+                new SortingStaffUseEvent(player, tool, block, container),
+                new MoneyHoeHarvestEvent(player, tool, block, true, new ArrayList<>()),
+                new MoneyHoeToggleEvent(player, tool, true)
+        );
+
+        for (org.bukkit.event.Event event : events) {
+            assertFalse(
+                    event.isAsynchronous(),
+                    event.getClass().getSimpleName() + " must be synchronous to allow safe Bukkit API access and prevent race conditions"
+            );
+        }
+    }
+
+    @Test
     public void testShopPreTransactionEventModificationAndCancellation() {
         Player player = mock(Player.class);
         ShopItem item = mock(ShopItem.class);
@@ -290,5 +322,149 @@ public class ShopEventsTest {
 
         assertEquals(ShopAPI.QuickSellResult.NOTHING, result);
         verify(economy, never()).deposit(any(Player.class), anyDouble());
+    }
+
+    @Test
+    public void testQuickSellCursorSuccess() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        MainConfig mainConfig = mock(MainConfig.class);
+        when(configManager.getMainConfig()).thenReturn(mainConfig);
+        when(mainConfig.isSellingEnabled()).thenReturn(true);
+        when(configManager.getMessagesConfig()).thenReturn(mock(me.usainsrht.basicshop.config.MessagesConfig.class));
+
+        EconomyProvider economy = mock(EconomyProvider.class);
+        when(economy.isAvailable()).thenReturn(true);
+
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(player.getName()).thenReturn("Tester");
+
+        ItemStack cursorStack = mock(ItemStack.class);
+        when(cursorStack.getType()).thenReturn(Material.DIAMOND);
+        when(cursorStack.getAmount()).thenReturn(5);
+        when(player.getItemOnCursor()).thenReturn(cursorStack);
+
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        when(inventory.getContents()).thenReturn(new ItemStack[0]); // Inventory is empty!
+        when(player.getInventory()).thenReturn(inventory);
+
+        ShopItem item = mock(ShopItem.class);
+        when(item.getId()).thenReturn("diamond");
+        when(item.getMaterial()).thenReturn(Material.DIAMOND);
+        when(item.getSellPrice()).thenReturn(OptionalDouble.of(10.0));
+
+        ShopCategory category = mock(ShopCategory.class);
+        when(category.getItems()).thenReturn(List.of(item));
+        when(configManager.getCategories()).thenReturn(List.of(category));
+
+        ShopAPIImpl shopAPI = new ShopAPIImpl(configManager, economy, null, null);
+        TransactionResult result = shopAPI.quickSellCursor(player);
+
+        assertEquals(TransactionResult.SUCCESS, result);
+        verify(economy).deposit(player, 50.0);
+        verify(player).setItemOnCursor(null);
+
+        // Player's inventory contents should not be checked or modified
+        verify(inventory, never()).setItem(anyInt(), any());
+        verify(inventory, never()).removeItem(any(ItemStack[].class));
+
+        ArgumentCaptor<ShopPostTransactionEvent> postCaptor = ArgumentCaptor.forClass(ShopPostTransactionEvent.class);
+        verify(pluginManager).callEvent(postCaptor.capture());
+        assertEquals(50.0, postCaptor.getValue().getTotalPrice());
+        assertEquals(5, postCaptor.getValue().getAmount());
+    }
+
+    @Test
+    public void testQuickSellCursorEmpty() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        MainConfig mainConfig = mock(MainConfig.class);
+        when(configManager.getMainConfig()).thenReturn(mainConfig);
+        when(mainConfig.isSellingEnabled()).thenReturn(true);
+
+        EconomyProvider economy = mock(EconomyProvider.class);
+        when(economy.isAvailable()).thenReturn(true);
+
+        Player player = mock(Player.class);
+        when(player.getItemOnCursor()).thenReturn(null);
+
+        ShopAPIImpl shopAPI = new ShopAPIImpl(configManager, economy, null, null);
+        TransactionResult result = shopAPI.quickSellCursor(player);
+
+        assertEquals(TransactionResult.NOT_ENOUGH_ITEMS, result);
+        verify(economy, never()).deposit(any(Player.class), anyDouble());
+    }
+
+    @Test
+    public void testQuickSellCursorUnsellable() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        MainConfig mainConfig = mock(MainConfig.class);
+        when(configManager.getMainConfig()).thenReturn(mainConfig);
+        when(mainConfig.isSellingEnabled()).thenReturn(true);
+
+        EconomyProvider economy = mock(EconomyProvider.class);
+        when(economy.isAvailable()).thenReturn(true);
+
+        Player player = mock(Player.class);
+        ItemStack cursorStack = mock(ItemStack.class);
+        when(cursorStack.getType()).thenReturn(Material.BEDROCK);
+        when(cursorStack.getAmount()).thenReturn(1);
+        when(player.getItemOnCursor()).thenReturn(cursorStack);
+
+        when(configManager.getCategories()).thenReturn(List.of());
+
+        ShopAPIImpl shopAPI = new ShopAPIImpl(configManager, economy, null, null);
+        TransactionResult result = shopAPI.quickSellCursor(player);
+
+        assertEquals(TransactionResult.SELL_DISABLED, result);
+        verify(economy, never()).deposit(any(Player.class), anyDouble());
+        verify(player, never()).setItemOnCursor(any());
+    }
+
+    @Test
+    public void testQuickSellCursorPartialSellViaPreEvent() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        MainConfig mainConfig = mock(MainConfig.class);
+        when(configManager.getMainConfig()).thenReturn(mainConfig);
+        when(mainConfig.isSellingEnabled()).thenReturn(true);
+        when(configManager.getMessagesConfig()).thenReturn(mock(me.usainsrht.basicshop.config.MessagesConfig.class));
+
+        EconomyProvider economy = mock(EconomyProvider.class);
+        when(economy.isAvailable()).thenReturn(true);
+
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(player.getName()).thenReturn("Tester");
+
+        ItemStack cursorStack = mock(ItemStack.class);
+        when(cursorStack.getType()).thenReturn(Material.DIAMOND);
+        when(cursorStack.getAmount()).thenReturn(5);
+        when(player.getItemOnCursor()).thenReturn(cursorStack);
+
+        ShopItem item = mock(ShopItem.class);
+        when(item.getId()).thenReturn("diamond");
+        when(item.getMaterial()).thenReturn(Material.DIAMOND);
+        when(item.getSellPrice()).thenReturn(OptionalDouble.of(10.0));
+
+        ShopCategory category = mock(ShopCategory.class);
+        when(category.getItems()).thenReturn(List.of(item));
+        when(configManager.getCategories()).thenReturn(List.of(category));
+
+        // PreEvent modifies amount from 5 to 2 and price to 25.0
+        doAnswer(invocation -> {
+            Object arg = invocation.getArgument(0);
+            if (arg instanceof ShopPreTransactionEvent pre) {
+                pre.setAmount(2);
+                pre.setPrice(25.0);
+            }
+            return null;
+        }).when(pluginManager).callEvent(any(ShopPreTransactionEvent.class));
+
+        ShopAPIImpl shopAPI = new ShopAPIImpl(configManager, economy, null, null);
+        TransactionResult result = shopAPI.quickSellCursor(player);
+
+        assertEquals(TransactionResult.SUCCESS, result);
+        verify(economy).deposit(player, 25.0);
+        verify(cursorStack).setAmount(3); // 5 - 2 = 3
+        verify(player).setItemOnCursor(cursorStack);
     }
 }

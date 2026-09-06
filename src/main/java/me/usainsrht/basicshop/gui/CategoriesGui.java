@@ -1,7 +1,6 @@
 package me.usainsrht.basicshop.gui;
 
 import me.usainsrht.basicshop.api.ShopAPI;
-import me.usainsrht.basicshop.api.ShopAPIImpl;
 import me.usainsrht.basicshop.api.event.ShopOpenEvent;
 import me.usainsrht.basicshop.api.event.ShopViewType;
 import me.usainsrht.basicshop.api.model.ShopCategory;
@@ -102,29 +101,39 @@ public final class CategoriesGui extends AbstractShopGui {
 
         if (hasCursorItem) {
             // Sell the cursor item immediately
-            ShopAPI.QuickSellResult result = new ShopAPI.QuickSellResult(false, 0, 0, List.of());
-            if (shopAPI instanceof ShopAPIImpl impl) {
-                var shopItemOpt = impl.getItemByMaterial(cursor.getType());
-                if (shopItemOpt.isPresent()) {
-                    var txResult = shopAPI.sellItem(player, shopItemOpt.get(), cursor.getAmount());
-                    if (txResult == TransactionResult.SUCCESS) {
-                        int amount = cursor.getAmount();
-                        ItemStack soldStack = cursor.clone();
-                        soldStack.setAmount(1);
-                        event.setCursor(new ItemStack(org.bukkit.Material.AIR));
-                        double earned = shopItemOpt.get().getSellPrice().orElse(0) * amount;
+            ItemStack cursorBefore = cursor.clone();
+            if (player.getItemOnCursor() == null || player.getItemOnCursor().getType().isAir()) {
+                player.setItemOnCursor(cursor);
+            }
+            TransactionResult txResult = shopAPI.quickSellCursor(player);
+            ItemStack afterCursor = player.getItemOnCursor();
+            event.setCursor(afterCursor != null && !afterCursor.getType().isAir() ? afterCursor : null);
 
-                        Component itemTextComp = ItemText.format(soldStack, b -> b.amount(amount));
-                        configManager.getMessagesConfig().send(player, "sell-success",
-                                Placeholder.unparsed("amount", String.valueOf(amount)),
-                                Placeholder.component("item", itemTextComp),
-                                Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
-                    } else {
-                        sendTransactionMessage(player, txResult);
-                    }
-                } else {
-                    sendMessage(player, "item-sell-disabled");
+            if (txResult == TransactionResult.SUCCESS) {
+                int originalAmount = cursorBefore.getAmount();
+                int remainingAmount = (afterCursor != null && afterCursor.getType() == cursorBefore.getType()) ? afterCursor.getAmount() : 0;
+                int soldAmount = originalAmount - remainingAmount;
+                if (soldAmount <= 0) {
+                    soldAmount = originalAmount;
                 }
+
+                int finalSold = soldAmount;
+                double earned = shopAPI.getItemByMaterial(cursorBefore.getType())
+                        .flatMap(si -> si.getSellPrice().isPresent()
+                                ? java.util.Optional.of(si.getSellPrice().getAsDouble() * finalSold)
+                                : java.util.Optional.empty())
+                        .orElse(0.0);
+
+                ItemStack soldStack = cursorBefore.clone();
+                soldStack.setAmount(1);
+
+                Component itemTextComp = ItemText.format(soldStack, b -> b.amount(finalSold));
+                configManager.getMessagesConfig().send(player, "sell-success",
+                        Placeholder.unparsed("amount", String.valueOf(finalSold)),
+                        Placeholder.component("item", itemTextComp),
+                        Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
+            } else {
+                sendTransactionMessage(player, txResult);
             }
         } else {
             // Open QuickSell inventory browser

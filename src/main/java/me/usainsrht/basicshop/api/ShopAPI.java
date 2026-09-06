@@ -17,8 +17,9 @@ import java.util.UUID;
 /**
  * Core API for BasicShop operations.
  *
- * <p>All buy/sell methods are safe to call from any thread; however, they interact
- * with the player's inventory and economy, so callers should ensure the player is online.
+ * <p>All buy/sell methods should be executed on the server or player thread, as they fire
+ * synchronous Bukkit events and interact directly with the player's inventory and economy.
+ * Callers should ensure the player is online.
  */
 public interface ShopAPI {
 
@@ -47,6 +48,13 @@ public interface ShopAPI {
      * @return the transaction result; {@code NOT_ENOUGH_ITEMS} if hand is empty
      */
     TransactionResult quickSellHand(Player player);
+
+    /**
+     * Sells the item stack currently on the player's cursor.
+     *
+     * @return the transaction result; {@code NOT_ENOUGH_ITEMS} if cursor is empty
+     */
+    TransactionResult quickSellCursor(Player player);
 
     /**
      * Sells every sellable item currently in the player's inventory.

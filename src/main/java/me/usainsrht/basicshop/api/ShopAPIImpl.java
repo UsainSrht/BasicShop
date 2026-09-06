@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * Default implementation of {@link ShopAPI}.
@@ -157,22 +158,34 @@ public final class ShopAPIImpl implements ShopAPI {
 
     @Override
     public TransactionResult quickSellHand(Player player) {
+        return sellHeldItemStack(player,
+                player.getInventory().getItemInMainHand(),
+                newStack -> player.getInventory().setItemInMainHand(newStack));
+    }
+
+    @Override
+    public TransactionResult quickSellCursor(Player player) {
+        return sellHeldItemStack(player,
+                player.getItemOnCursor(),
+                player::setItemOnCursor);
+    }
+
+    private TransactionResult sellHeldItemStack(Player player, ItemStack stack, Consumer<ItemStack> stackUpdater) {
         if (!economy.isAvailable())                return TransactionResult.ECONOMY_UNAVAILABLE;
         if (!configManager.getMainConfig().isSellingEnabled()) return TransactionResult.GLOBAL_SELL_DISABLED;
 
-        ItemStack hand = player.getInventory().getItemInMainHand();
-        if (hand.getType() == Material.AIR || hand.getAmount() == 0) {
+        if (stack == null || stack.getType() == Material.AIR || stack.getAmount() <= 0) {
             return TransactionResult.NOT_ENOUGH_ITEMS;
         }
 
-        Optional<ShopItem> shopItemOpt = getItemByMaterial(hand.getType());
+        Optional<ShopItem> shopItemOpt = getItemByMaterial(stack.getType());
         if (shopItemOpt.isEmpty())                 return TransactionResult.SELL_DISABLED;
 
         ShopItem shopItem = shopItemOpt.get();
         OptionalDouble priceOpt = shopItem.getSellPrice();
         if (priceOpt.isEmpty())                    return TransactionResult.SELL_DISABLED;
 
-        int amount = hand.getAmount();
+        int amount = stack.getAmount();
         double totalEarned = priceOpt.getAsDouble() * amount;
         ShopCategory category = getCategoryForItem(shopItem).orElse(null);
 
@@ -190,11 +203,11 @@ public final class ShopAPIImpl implements ShopAPI {
             return TransactionResult.CANCELLED;
         }
 
-        if (finalAmount >= hand.getAmount()) {
-            player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
+        if (finalAmount >= stack.getAmount()) {
+            stackUpdater.accept(null);
         } else {
-            hand.setAmount(hand.getAmount() - finalAmount);
-            player.getInventory().setItemInMainHand(hand);
+            stack.setAmount(stack.getAmount() - finalAmount);
+            stackUpdater.accept(stack);
         }
 
         economy.deposit(player, finalEarned);
