@@ -25,8 +25,13 @@ public final class ToolsConfig {
     private static final Logger LOGGER = Logger.getLogger(ToolsConfig.class.getName());
 
     public record ToolDefinition(
-            ItemStack itemStack
-    ) {}
+            ItemStack itemStack,
+            boolean usableWhenRiding
+    ) {
+        public ToolDefinition(ItemStack itemStack) {
+            this(itemStack, false);
+        }
+    }
 
     private final Map<ShopToolType, ToolDefinition> tools;
 
@@ -37,12 +42,14 @@ public final class ToolsConfig {
         for (ShopToolType type : ShopToolType.values()) {
             ConfigurationSection sub = section != null ? section.getConfigurationSection(type.getId()) : null;
             ItemStack stack = null;
+            boolean usableWhenRiding = false;
             if (sub != null) {
                 try {
                     stack = YamlItem.parse(sub);
                 } catch (Throwable t) {
                     LOGGER.log(Level.WARNING, "Failed to parse tool configuration section '" + type.getId() + "': " + t.getMessage(), t);
                 }
+                usableWhenRiding = sub.getBoolean("usable-when-riding", false);
             }
             if (stack == null || stack.getType().isAir()) {
                 try {
@@ -52,22 +59,33 @@ public final class ToolsConfig {
                 }
             }
             if (stack == null || stack.getType().isAir()) {
-                stack = new ItemStack(getDefaultMaterial(type));
+                try {
+                    stack = new ItemStack(getDefaultMaterial(type));
+                } catch (Throwable ignored) {}
             }
 
-            parsed.put(type, new ToolDefinition(stack));
+            parsed.put(type, new ToolDefinition(stack, usableWhenRiding));
         }
 
         this.tools = Collections.unmodifiableMap(parsed);
     }
 
     public ToolDefinition get(ShopToolType type) {
-        if (type == null) return new ToolDefinition(new ItemStack(Material.BLAZE_ROD));
+        if (type == null) return new ToolDefinition(null, false);
         ToolDefinition def = tools.get(type);
-        if (def == null || def.itemStack() == null) {
-            def = new ToolDefinition(new ItemStack(getDefaultMaterial(type)));
+        if (def == null) {
+            ItemStack fallback = null;
+            try {
+                fallback = new ItemStack(getDefaultMaterial(type));
+            } catch (Throwable ignored) {}
+            def = new ToolDefinition(fallback, false);
         }
         return def;
+    }
+
+    public boolean isUsableWhenRiding(ShopToolType type) {
+        if (type == null) return false;
+        return get(type).usableWhenRiding();
     }
 
     public Map<ShopToolType, ToolDefinition> getAll() {
@@ -123,7 +141,11 @@ public final class ToolsConfig {
                 return parsed;
             }
         } catch (Throwable ignored) {}
-        return new ItemStack(getDefaultMaterial(type));
+        try {
+            return new ItemStack(getDefaultMaterial(type));
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     public static Optional<ShopToolType> resolveToolArgument(String input) {

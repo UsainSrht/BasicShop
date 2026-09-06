@@ -25,7 +25,11 @@ public final class MainConfig {
 
     public record NavButtonConfig(int slot, Material material, String name, List<String> lore) {}
     public record FillerConfig(boolean enabled, Material material, String name, boolean hideTooltip) {}
-    public record CategoryGuiConfig(String pageFormat, NavButtonConfig backButton, NavButtonConfig prevButton, NavButtonConfig nextButton, FillerConfig filler) {}
+    public record CategoryGuiConfig(int rows, String pageFormat, NavButtonConfig backButton, NavButtonConfig prevButton, NavButtonConfig nextButton, FillerConfig filler) {
+        public CategoryGuiConfig(String pageFormat, NavButtonConfig backButton, NavButtonConfig prevButton, NavButtonConfig nextButton, FillerConfig filler) {
+            this(6, pageFormat, backButton, prevButton, nextButton, filler);
+        }
+    }
 
     /**
      * Holds the configured root command name, its aliases, and all sub-command names.
@@ -129,7 +133,9 @@ public final class MainConfig {
         Material fillerMat        = parseMat(fs != null ? fs.getString("material") : null, Material.GRAY_STAINED_GLASS_PANE);
         String fillerName         = fs != null ? fs.getString("name", " ") : " ";
         boolean fillerHideTooltip = fs == null || fs.getBoolean("hide-tooltip", true);
-        return new CategoryGuiConfig(pageFormat, back, prev, next, new FillerConfig(fillerEnabled, fillerMat, fillerName, fillerHideTooltip));
+        int rows = sec != null ? sec.getInt("rows", 6) : 6;
+        rows = Math.max(1, Math.min(6, rows));
+        return new CategoryGuiConfig(rows, pageFormat, back, prev, next, new FillerConfig(fillerEnabled, fillerMat, fillerName, fillerHideTooltip));
     }
 
     private static NavButtonConfig parseNavButton(ConfigurationSection sec, int defaultSlot, Material defaultMat, String defaultName) {

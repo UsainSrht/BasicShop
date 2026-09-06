@@ -32,6 +32,7 @@ tools:
     use-cooldown:
       cooldown_group: basicshop:money_staff
       seconds: 1.0
+    usable-when-riding: false
   money_hoe:
     material: GOLDEN_HOE
     name: "<gold>Money Hoe"
@@ -46,6 +47,7 @@ tools:
     use-cooldown:
       cooldown_group: basicshop:money_hoe
       seconds: 0.5
+    usable-when-riding: false
   sorting_staff:
     material: AMETHYST_SHARD
     name: "<light_purple>Sorting Staff"
@@ -55,6 +57,7 @@ tools:
     use-cooldown:
       cooldown_group: basicshop:sorting_staff
       seconds: 2.0
+    usable-when-riding: false
 
 # Global toggles
 global:
@@ -70,6 +73,8 @@ global:
 
 # Category GUI — navigation buttons and bottom-row filler
 category-gui:
+  # Default rows (1-6) for category GUIs when not overridden in individual category files
+  rows: 6
   # Appended to the category name in the GUI title when multiple pages exist.
   # Placeholders: <page> (current page), <total> (total pages)
   page-format: " <gray>(<page>/<total>)"

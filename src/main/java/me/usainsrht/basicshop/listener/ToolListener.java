@@ -100,6 +100,38 @@ public final class ToolListener implements Listener {
         this.morePaperLib = morePaperLib;
     }
 
+    private boolean isRidingRestricted(Player player, ShopToolType type) {
+        if (!player.isInsideVehicle()) {
+            return false;
+        }
+        ToolsConfig toolsConfig = configManager.getToolsConfig();
+        return toolsConfig != null && !toolsConfig.isUsableWhenRiding(type);
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onHoeBreakRestriction(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        ItemStack tool = player.getInventory().getItemInMainHand();
+        if (toolFactory.getToolType(tool) != ShopToolType.MONEY_HOE)
+            return;
+        if (isRidingRestricted(player, ShopToolType.MONEY_HOE)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onStaffInteractRestriction(PlayerInteractEvent event) {
+        if (!event.hasItem())
+            return;
+        ItemStack item = event.getItem();
+        ShopToolType type = toolFactory.getToolType(item);
+        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF) {
+            if (isRidingRestricted(event.getPlayer(), type)) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         ShopToolType type = toolFactory.getToolType(event.getItemInHand());
@@ -125,6 +157,8 @@ public final class ToolListener implements Listener {
         event.setCancelled(true);
 
         Player player = event.getPlayer();
+        if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
+            return;
         if (!player.hasPermission("basicshop.tools.staff"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.MONEY_STAFF);
@@ -163,6 +197,8 @@ public final class ToolListener implements Listener {
         event.setCancelled(true);
 
         Player player = event.getPlayer();
+        if (isRidingRestricted(player, ShopToolType.SORTING_STAFF))
+            return;
         if (!player.hasPermission("basicshop.tools.sorting_staff"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.SORTING_STAFF);
@@ -238,6 +274,8 @@ public final class ToolListener implements Listener {
             return;
 
         Player player = event.getPlayer();
+        if (isRidingRestricted(player, ShopToolType.MONEY_HOE))
+            return;
         if (!player.hasPermission("basicshop.tools.hoe"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.MONEY_HOE);

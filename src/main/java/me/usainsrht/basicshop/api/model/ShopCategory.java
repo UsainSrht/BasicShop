@@ -17,6 +17,7 @@ public final class ShopCategory {
     private final int slot;
     private final List<String> iconLore; // MiniMessage strings
     private final List<ShopItem> items;
+    private final int rows;
 
     public ShopCategory(
             String id,
@@ -27,6 +28,19 @@ public final class ShopCategory {
             List<String> iconLore,
             List<ShopItem> items
     ) {
+        this(id, displayName, guiTitle, iconMaterial, slot, iconLore, items, 6);
+    }
+
+    public ShopCategory(
+            String id,
+            String displayName,
+            String guiTitle,
+            Material iconMaterial,
+            int slot,
+            List<String> iconLore,
+            List<ShopItem> items,
+            int rows
+    ) {
         this.id = id;
         this.displayName = displayName;
         this.guiTitle = guiTitle;
@@ -34,6 +48,7 @@ public final class ShopCategory {
         this.slot = slot;
         this.iconLore = Collections.unmodifiableList(iconLore);
         this.items = Collections.unmodifiableList(items);
+        this.rows = rows;
     }
 
     public String getId() {
@@ -63,5 +78,9 @@ public final class ShopCategory {
 
     public List<ShopItem> getItems() {
         return items;
+    }
+
+    public int getRows() {
+        return rows;
     }
 }

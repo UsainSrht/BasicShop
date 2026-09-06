@@ -198,7 +198,12 @@ public final class ConfigManager {
                         ? cfg.getStringList("lore")
                         : (entry != null ? entry.lore() : Collections.emptyList());
 
-                result.add(new ShopCategory(id, displayName, guiTitle, iconMat, slot, lore, items));
+                int defaultRows = mainConfig != null ? mainConfig.getCategoryGuiConfig().rows() : 6;
+                int rows = cfg.contains("rows") ? cfg.getInt("rows")
+                        : (cfg.contains("gui.rows") ? cfg.getInt("gui.rows") : defaultRows);
+                rows = Math.max(1, Math.min(6, rows));
+
+                result.add(new ShopCategory(id, displayName, guiTitle, iconMat, slot, lore, items, rows));
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to load category file: " + file.getName(), e);
             }

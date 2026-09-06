@@ -1,6 +1,8 @@
 # Adventurer category
 
 title: "<shadow:#000000FF><aqua>Adventurer</shadow>"
+# Custom GUI size in rows (1-6). If omitted, falls back to category-gui.rows in config.yml (default 6).
+rows: 6
 
 items:
   heart_of_the_sea:

@@ -55,6 +55,10 @@ permissions:
     description: Allows using the Money Hoe
     default: true
 
+  basicshop.tools.sorting_staff:
+    description: Allows using the Sorting Staff
+    default: true
+
   basicshop.admin:
     description: Grants all BasicShop admin permissions
     default: op

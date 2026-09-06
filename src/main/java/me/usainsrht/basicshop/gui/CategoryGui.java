@@ -43,25 +43,19 @@ import java.util.List;
  */
 public final class CategoryGui extends AbstractShopGui {
 
-    private static final int CLASSIC_PAGE_SIZE = 45;
-    private static final int[] MODERN_ITEM_SLOTS = {
-        10, 11, 12, 13, 14, 15, 16,
-        19, 20, 21, 22, 23, 24, 25,
-        28, 29, 30, 31, 32, 33, 34,
-        37, 38, 39, 40, 41, 42, 43
-    };
-
     private final ConfigManager configManager;
     private final ShopAPI shopAPI;
     private final MorePaperLib morePaperLib;
     private final Player viewer;
     private final ShopCategory category;
+    private final int rows;
     private int page;
 
     private final int slotBack;
     private final int slotPrev;
     private final int slotNext;
     private final boolean modern;
+    private final int[] itemSlots;
     private final int pageSize;
 
     public CategoryGui(
@@ -79,14 +73,63 @@ public final class CategoryGui extends AbstractShopGui {
         this.category      = category;
         this.page          = page;
 
+        int configuredRows = category.getRows();
+        if (configuredRows <= 0) {
+            configuredRows = configManager.getMainConfig().getCategoryGuiConfig().rows();
+        }
+        this.rows = Math.max(1, Math.min(6, configuredRows));
+
         var catGuiCfg = configManager.getMainConfig().getCategoryGuiConfig();
-        this.slotBack = catGuiCfg.backButton().slot();
-        this.slotPrev = catGuiCfg.prevButton().slot();
-        this.slotNext = catGuiCfg.nextButton().slot();
+        this.slotBack = adjustSlot(catGuiCfg.backButton().slot(), this.rows);
+        this.slotPrev = adjustSlot(catGuiCfg.prevButton().slot(), this.rows);
+        this.slotNext = adjustSlot(catGuiCfg.nextButton().slot(), this.rows);
         this.modern   = configManager.getMainConfig().isModernItemListing();
-        this.pageSize = modern ? MODERN_ITEM_SLOTS.length : CLASSIC_PAGE_SIZE;
+        this.itemSlots = computeItemSlots(this.rows, this.modern);
+        this.pageSize = this.itemSlots.length;
 
         build();
+    }
+
+    private static int adjustSlot(int slot, int rows) {
+        int totalSlots = rows * 9;
+        if (rows == 6) {
+            return Math.min(slot, totalSlots - 1);
+        }
+        if (slot >= 45 && slot <= 53) {
+            int col = slot - 45;
+            return (rows - 1) * 9 + col;
+        }
+        if (slot >= totalSlots) {
+            return (rows - 1) * 9 + (slot % 9);
+        }
+        return slot;
+    }
+
+    public static int[] computeItemSlots(int rows, boolean modern) {
+        if (rows <= 1) {
+            return new int[]{1, 2, 3, 5, 6, 7};
+        }
+        if (modern) {
+            if (rows == 2) {
+                return new int[]{1, 2, 3, 4, 5, 6, 7};
+            }
+            int numRows = rows - 2;
+            int[] slots = new int[numRows * 7];
+            int idx = 0;
+            for (int r = 1; r <= rows - 2; r++) {
+                for (int c = 1; c <= 7; c++) {
+                    slots[idx++] = r * 9 + c;
+                }
+            }
+            return slots;
+        } else {
+            int count = (rows - 1) * 9;
+            int[] slots = new int[count];
+            for (int i = 0; i < count; i++) {
+                slots[i] = i;
+            }
+            return slots;
+        }
     }
 
     private void build() {
@@ -102,7 +145,7 @@ public final class CategoryGui extends AbstractShopGui {
                     .replace("<total>", String.valueOf(totalPages));
         }
         Component title = MM.deserialize(titleStr);
-        inventory = Bukkit.createInventory(this, 54, title);
+        inventory = Bukkit.createInventory(this, rows * 9, title);
 
         int start = page * pageSize;
         int end   = Math.min(start + pageSize, items.size());
@@ -112,7 +155,7 @@ public final class CategoryGui extends AbstractShopGui {
             String itemName = configManager.getMainConfig().getItemDisplayName()
                     .replace("<item>", "<lang:" + item.getMaterial().translationKey() + ">");
             ItemStack icon = buildItem(item.getMaterial(), itemName, buildItemLore(item));
-            int guiSlot = modern ? MODERN_ITEM_SLOTS[i - start] : (i - start);
+            int guiSlot = itemSlots[i - start];
             inventory.setItem(guiSlot, icon);
         }
 
@@ -139,8 +182,8 @@ public final class CategoryGui extends AbstractShopGui {
                 navFillerMeta.setHideTooltip(fillerCfg.hideTooltip());
                 navFiller.setItemMeta(navFillerMeta);
             }
-            int fillFrom = modern ? 0 : 45;
-            for (int s = fillFrom; s < 54; s++) {
+            int fillFrom = modern ? 0 : (rows - 1) * 9;
+            for (int s = fillFrom; s < inventory.getSize(); s++) {
                 if (inventory.getItem(s) == null) {
                     inventory.setItem(s, navFiller);
                 }
@@ -233,13 +276,10 @@ public final class CategoryGui extends AbstractShopGui {
     }
 
     private int findItemIndex(int slot) {
-        if (modern) {
-            for (int i = 0; i < MODERN_ITEM_SLOTS.length; i++) {
-                if (MODERN_ITEM_SLOTS[i] == slot) return i;
-            }
-            return -1;
+        for (int i = 0; i < itemSlots.length; i++) {
+            if (itemSlots[i] == slot) return i;
         }
-        return (slot >= 0 && slot < CLASSIC_PAGE_SIZE) ? slot : -1;
+        return -1;
     }
 
     private void handleTransaction(Player player, ShopItem item, boolean isBuy, int amount) {
