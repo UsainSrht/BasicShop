@@ -1,11 +1,16 @@
 package me.usainsrht.basicshop.listener;
 
 import me.usainsrht.basicshop.api.ShopAPI;
+import me.usainsrht.basicshop.api.event.MoneyHoeHarvestEvent;
+import me.usainsrht.basicshop.api.event.MoneyHoeToggleEvent;
+import me.usainsrht.basicshop.api.event.MoneyStaffUseEvent;
+import me.usainsrht.basicshop.api.event.SortingStaffUseEvent;
 import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.ShopToolType;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.ToolsConfig;
 import me.usainsrht.basicshop.item.ShopToolFactory;
+import org.bukkit.Bukkit;
 import me.usainsrht.itemapi.itemtext.ItemText;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -170,7 +175,12 @@ public final class ToolListener implements Listener {
             return;
 
         BlockState state = block.getState();
-        if (!(state instanceof Container))
+        if (!(state instanceof Container container))
+            return;
+
+        MoneyStaffUseEvent staffEvent = new MoneyStaffUseEvent(player, item, block, container);
+        Bukkit.getPluginManager().callEvent(staffEvent);
+        if (staffEvent.isCancelled())
             return;
 
         toolFactory.applyCooldown(player, item, ShopToolType.MONEY_STAFF);
@@ -210,7 +220,12 @@ public final class ToolListener implements Listener {
             return;
 
         BlockState state = block.getState();
-        if (!(state instanceof Container))
+        if (!(state instanceof Container container))
+            return;
+
+        SortingStaffUseEvent sortEvent = new SortingStaffUseEvent(player, item, block, container);
+        Bukkit.getPluginManager().callEvent(sortEvent);
+        if (sortEvent.isCancelled())
             return;
 
         toolFactory.applyCooldown(player, item, ShopToolType.SORTING_STAFF);
@@ -282,7 +297,14 @@ public final class ToolListener implements Listener {
         if (player.getCooldown(ShopToolType.MONEY_HOE.getCooldownKey()) > 0)
             return;
 
-        boolean autoSellEnabled = toolFactory.toggleAutoSell(item);
+        boolean targetAutoSell = !toolFactory.isAutoSellEnabled(item);
+        MoneyHoeToggleEvent toggleEvent = new MoneyHoeToggleEvent(player, item, targetAutoSell);
+        Bukkit.getPluginManager().callEvent(toggleEvent);
+        if (toggleEvent.isCancelled())
+            return;
+
+        boolean autoSellEnabled = toggleEvent.isNewAutoSellState();
+        toolFactory.setAutoSellEnabled(item, autoSellEnabled);
         player.getInventory().setItemInMainHand(item);
 
         toolFactory.applyCooldown(player, item, ShopToolType.MONEY_HOE);
@@ -308,16 +330,23 @@ public final class ToolListener implements Listener {
             return;
         }
 
+        Collection<ItemStack> drops = new ArrayList<>(block.getDrops(tool));
+        boolean autoSellEnabled = toolFactory.isAutoSellEnabled(tool);
+
+        MoneyHoeHarvestEvent harvestEvent = new MoneyHoeHarvestEvent(player, tool, block, autoSellEnabled, drops);
+        Bukkit.getPluginManager().callEvent(harvestEvent);
+        if (harvestEvent.isCancelled()) {
+            event.setCancelled(true);
+            return;
+        }
+
         event.setCancelled(true);
         event.setDropItems(false);
 
-        Collection<ItemStack> drops = block.getDrops(tool);
-        boolean autoSellEnabled = toolFactory.isAutoSellEnabled(tool);
-
-        if (autoSellEnabled) {
-            handleAutoSell(player, block, drops);
+        if (harvestEvent.isAutoSell()) {
+            handleAutoSell(player, block, harvestEvent.getDrops());
         } else {
-            giveDrops(player, block, drops);
+            giveDrops(player, block, harvestEvent.getDrops());
         }
 
         scheduleReplant(block);

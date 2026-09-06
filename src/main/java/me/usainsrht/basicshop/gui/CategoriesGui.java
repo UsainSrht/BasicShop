@@ -2,10 +2,12 @@ package me.usainsrht.basicshop.gui;
 
 import me.usainsrht.basicshop.api.ShopAPI;
 import me.usainsrht.basicshop.api.ShopAPIImpl;
+import me.usainsrht.basicshop.api.event.ShopOpenEvent;
+import me.usainsrht.basicshop.api.event.ShopViewType;
 import me.usainsrht.basicshop.api.model.ShopCategory;
+import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.config.CategoriesConfig;
 import me.usainsrht.basicshop.config.ConfigManager;
-import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.util.ShopSounds;
 import me.usainsrht.itemapi.itemtext.ItemText;
 import net.kyori.adventure.text.Component;
@@ -126,6 +128,10 @@ public final class CategoriesGui extends AbstractShopGui {
             }
         } else {
             // Open QuickSell inventory browser
+            ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.QUICK_SELL, null);
+            Bukkit.getPluginManager().callEvent(openEvent);
+            if (openEvent.isCancelled()) return;
+
             ShopSounds.play(player, configManager.getMessagesConfig(), "gui-click-sound");
             morePaperLib.scheduling().entitySpecificScheduler(player).run(
                     () -> {
@@ -136,6 +142,10 @@ public final class CategoriesGui extends AbstractShopGui {
     }
 
     private void openCategory(Player player, ShopCategory category) {
+        ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.CATEGORY, category);
+        Bukkit.getPluginManager().callEvent(openEvent);
+        if (openEvent.isCancelled()) return;
+
         CategoryGui categoryGui = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, 0);
         player.openInventory(categoryGui.getInventory());
     }
@@ -145,6 +155,9 @@ public final class CategoriesGui extends AbstractShopGui {
     }
 
     private void sendTransactionMessage(Player player, TransactionResult result) {
+        if (result == TransactionResult.CANCELLED) {
+            return;
+        }
         String key = switch (result) {
             case INSUFFICIENT_FUNDS    -> "insufficient-funds";
             case NOT_ENOUGH_ITEMS      -> "not-enough-items";

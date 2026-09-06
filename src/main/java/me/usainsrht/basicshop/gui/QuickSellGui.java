@@ -2,6 +2,8 @@ package me.usainsrht.basicshop.gui;
 
 import me.usainsrht.basicshop.api.ShopAPI;
 import me.usainsrht.basicshop.api.ShopAPIImpl;
+import me.usainsrht.basicshop.api.event.ShopOpenEvent;
+import me.usainsrht.basicshop.api.event.ShopViewType;
 import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.config.ConfigManager;
@@ -131,6 +133,10 @@ public final class QuickSellGui extends AbstractShopGui {
         if (slot == cfg.getCloseSlot()) {
             ShopSounds.play(player, configManager.getMessagesConfig(), "back-to-categories-sound");
             if (cfg.isCloseReturnsToCategories()) {
+                ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.CATEGORIES, null);
+                Bukkit.getPluginManager().callEvent(openEvent);
+                if (openEvent.isCancelled()) return;
+
                 morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                     CategoriesGui categories = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
                     player.openInventory(categories.getInventory());
@@ -197,6 +203,9 @@ public final class QuickSellGui extends AbstractShopGui {
     }
 
     private void sendResultMessage(Player player, TransactionResult result, ShopItem shopItem, int amount) {
+        if (result == TransactionResult.CANCELLED) {
+            return;
+        }
         if (result == TransactionResult.SUCCESS) {
             double price = shopItem.getSellPrice().orElse(0) * amount;
             ItemStack itemStack = new ItemStack(shopItem.getMaterial(), 1);

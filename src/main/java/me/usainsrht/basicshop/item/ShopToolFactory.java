@@ -100,27 +100,30 @@ public final class ShopToolFactory {
     }
 
     /**
+     * Sets whether auto-sell is enabled on a money hoe and writes the updated metadata back to the stack.
+     */
+    public void setAutoSellEnabled(ItemStack stack, boolean enabled) {
+        if (stack == null || !stack.hasItemMeta()) return;
+
+        ItemMeta meta = stack.getItemMeta();
+        var pdc = meta.getPersistentDataContainer();
+        if (enabled) {
+            pdc.remove(autoSellDisabledKey);
+        } else {
+            pdc.set(autoSellDisabledKey, PersistentDataType.BYTE, (byte) 1);
+        }
+        stack.setItemMeta(meta);
+    }
+
+    /**
      * Toggles auto-sell on a money hoe and writes the updated item back to the stack.
      *
      * @return {@code true} if auto-sell is now enabled, {@code false} if disabled
      */
     public boolean toggleAutoSell(ItemStack stack) {
-        if (stack == null || !stack.hasItemMeta()) return true;
-
-        ItemMeta meta = stack.getItemMeta();
-        var pdc = meta.getPersistentDataContainer();
-        boolean nowEnabled;
-
-        if (pdc.has(autoSellDisabledKey, PersistentDataType.BYTE)) {
-            pdc.remove(autoSellDisabledKey);
-            nowEnabled = true;
-        } else {
-            pdc.set(autoSellDisabledKey, PersistentDataType.BYTE, (byte) 1);
-            nowEnabled = false;
-        }
-
-        stack.setItemMeta(meta);
-        return nowEnabled;
+        boolean next = !isAutoSellEnabled(stack);
+        setAutoSellEnabled(stack, next);
+        return next;
     }
 
     public NamespacedKey getToolKey() {

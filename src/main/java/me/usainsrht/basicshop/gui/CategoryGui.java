@@ -1,6 +1,8 @@
 package me.usainsrht.basicshop.gui;
 
 import me.usainsrht.basicshop.api.ShopAPI;
+import me.usainsrht.basicshop.api.event.ShopOpenEvent;
+import me.usainsrht.basicshop.api.event.ShopViewType;
 import me.usainsrht.basicshop.api.model.ShopCategory;
 import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.TransactionResult;
@@ -229,6 +231,10 @@ public final class CategoryGui extends AbstractShopGui {
         ClickType type = event.getClick();
 
         if (slot == slotBack) {
+            ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.CATEGORIES, null);
+            Bukkit.getPluginManager().callEvent(openEvent);
+            if (openEvent.isCancelled()) return;
+
             ShopSounds.play(player, configManager.getMessagesConfig(), "back-to-categories-sound");
             morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
                 CategoriesGui cg = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
@@ -320,6 +326,9 @@ public final class CategoryGui extends AbstractShopGui {
     }
 
     private void sendTransactionMessage(Player player, ShopItem item, TransactionResult result, boolean isBuy, int amount) {
+        if (result == TransactionResult.CANCELLED) {
+            return;
+        }
         if (result == TransactionResult.SUCCESS) {
             String key = isBuy ? "buy-success" : "sell-success";
             double price = (isBuy ? item.getBuyPrice().orElse(0) : item.getSellPrice().orElse(0)) * amount;

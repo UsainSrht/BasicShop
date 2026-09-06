@@ -1,7 +1,11 @@
 package me.usainsrht.basicshop.command;
 
 import me.usainsrht.basicshop.api.ShopAPI;
+import me.usainsrht.basicshop.api.event.ShopOpenEvent;
+import me.usainsrht.basicshop.api.event.ShopReloadEvent;
+import me.usainsrht.basicshop.api.event.ShopViewType;
 import me.usainsrht.basicshop.api.model.ShopToolType;
+import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.MainConfig;
 import me.usainsrht.basicshop.gui.CategoriesGui;
@@ -126,6 +130,7 @@ public final class ShopCommand {
                         .requires(src -> src.getSender().hasPermission("basicshop.admin.reload"))
                         .executes(ctx -> {
                             configManager.load();
+                            Bukkit.getPluginManager().callEvent(new ShopReloadEvent(ctx.getSource().getSender()));
                             configManager.getMessagesConfig().send(ctx.getSource().getSender(), "reload-success");
                             return Command.SINGLE_SUCCESS;
                         }))
@@ -192,6 +197,10 @@ public final class ShopCommand {
     // -------------------------------------------------------------------------
 
     private void openShop(Player player) {
+        ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.CATEGORIES, null);
+        Bukkit.getPluginManager().callEvent(openEvent);
+        if (openEvent.isCancelled()) return;
+
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             CategoriesGui gui = new CategoriesGui(configManager, shopAPI, morePaperLib, player);
             player.openInventory(gui.getInventory());
@@ -199,6 +208,10 @@ public final class ShopCommand {
     }
 
     private void openQuickSell(Player player) {
+        ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.QUICK_SELL, null);
+        Bukkit.getPluginManager().callEvent(openEvent);
+        if (openEvent.isCancelled()) return;
+
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             QuickSellGui gui = new QuickSellGui(configManager, shopAPI, morePaperLib, player);
             player.openInventory(gui.getInventory());
@@ -262,6 +275,9 @@ public final class ShopCommand {
     private void executeQuickSellHand(Player player) {
         var handStack = player.getInventory().getItemInMainHand().clone();
         var result = shopAPI.quickSellHand(player);
+        if (result == TransactionResult.CANCELLED) {
+            return;
+        }
         String key = switch (result) {
             case SUCCESS               -> null;
             case NOT_ENOUGH_ITEMS      -> "quicksell-hand-empty";

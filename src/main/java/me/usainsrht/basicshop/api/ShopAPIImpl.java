@@ -3,6 +3,11 @@ package me.usainsrht.basicshop.api;
 import me.usainsrht.basicshop.analytics.AnalyticsManager;
 import me.usainsrht.basicshop.analytics.TransactionLogger;
 import me.usainsrht.basicshop.api.economy.EconomyProvider;
+import me.usainsrht.basicshop.api.event.BulkSellSource;
+import me.usainsrht.basicshop.api.event.ShopBulkSellEvent;
+import me.usainsrht.basicshop.api.event.ShopPostTransactionEvent;
+import me.usainsrht.basicshop.api.event.ShopPreBulkSellEvent;
+import me.usainsrht.basicshop.api.event.ShopPreTransactionEvent;
 import me.usainsrht.basicshop.api.model.ShopCategory;
 import me.usainsrht.basicshop.api.model.ShopItem;
 import me.usainsrht.basicshop.api.model.TransactionRecord;
@@ -10,6 +15,7 @@ import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.api.model.TransactionType;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.util.ShopSounds;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -62,12 +68,33 @@ public final class ShopAPIImpl implements ShopAPI {
         if (priceOpt.isEmpty())                   return TransactionResult.BUY_DISABLED;
 
         double totalCost = priceOpt.getAsDouble() * amount;
-        if (economy.getBalance(player) < totalCost) return TransactionResult.INSUFFICIENT_FUNDS;
+        ShopCategory category = getCategoryForItem(item).orElse(null);
 
-        economy.withdraw(player, totalCost);
-        player.getInventory().addItem(new ItemStack(item.getMaterial(), amount));
+        ShopPreTransactionEvent preEvent = new ShopPreTransactionEvent(
+                player, item, category, TransactionType.BUY, amount, totalCost
+        );
+        Bukkit.getPluginManager().callEvent(preEvent);
+        if (preEvent.isCancelled()) {
+            return TransactionResult.CANCELLED;
+        }
 
-        record(player, item, TransactionType.BUY, amount, totalCost);
+        int finalAmount = preEvent.getAmount();
+        double finalCost = preEvent.getPrice();
+        if (finalAmount <= 0) {
+            return TransactionResult.CANCELLED;
+        }
+
+        if (economy.getBalance(player) < finalCost) return TransactionResult.INSUFFICIENT_FUNDS;
+
+        economy.withdraw(player, finalCost);
+        player.getInventory().addItem(new ItemStack(item.getMaterial(), finalAmount));
+
+        TransactionRecord record = record(player, item, TransactionType.BUY, finalAmount, finalCost);
+        ShopPostTransactionEvent postEvent = new ShopPostTransactionEvent(
+                player, item, category, TransactionType.BUY, finalAmount, finalCost, record
+        );
+        Bukkit.getPluginManager().callEvent(postEvent);
+
         return TransactionResult.SUCCESS;
     }
 
@@ -83,13 +110,34 @@ public final class ShopAPIImpl implements ShopAPI {
         if (available <= 0)                        return TransactionResult.NOT_ENOUGH_ITEMS;
 
         int actualAmount = Math.min(amount, available);
-
-        removeFromInventory(player, item.getMaterial(), actualAmount);
+        ShopCategory category = getCategoryForItem(item).orElse(null);
         double totalEarned = priceOpt.getAsDouble() * actualAmount;
-        economy.deposit(player, totalEarned);
 
-        record(player, item, TransactionType.SELL, actualAmount, totalEarned);
+        ShopPreTransactionEvent preEvent = new ShopPreTransactionEvent(
+                player, item, category, TransactionType.SELL, actualAmount, totalEarned
+        );
+        Bukkit.getPluginManager().callEvent(preEvent);
+        if (preEvent.isCancelled()) {
+            return TransactionResult.CANCELLED;
+        }
+
+        int finalAmount = Math.min(preEvent.getAmount(), available);
+        double finalEarned = preEvent.getPrice();
+        if (finalAmount <= 0) {
+            return TransactionResult.CANCELLED;
+        }
+
+        removeFromInventory(player, item.getMaterial(), finalAmount);
+        economy.deposit(player, finalEarned);
+
+        TransactionRecord record = record(player, item, TransactionType.SELL, finalAmount, finalEarned);
         playSellSound(player);
+
+        ShopPostTransactionEvent postEvent = new ShopPostTransactionEvent(
+                player, item, category, TransactionType.SELL, finalAmount, finalEarned, record
+        );
+        Bukkit.getPluginManager().callEvent(postEvent);
+
         return TransactionResult.SUCCESS;
     }
 
@@ -104,13 +152,7 @@ public final class ShopAPIImpl implements ShopAPI {
         int available = countInInventory(player, item.getMaterial());
         if (available <= 0)                        return TransactionResult.NOT_ENOUGH_ITEMS;
 
-        removeFromInventory(player, item.getMaterial(), available);
-        double totalEarned = priceOpt.getAsDouble() * available;
-        economy.deposit(player, totalEarned);
-
-        record(player, item, TransactionType.SELL, available, totalEarned);
-        playSellSound(player);
-        return TransactionResult.SUCCESS;
+        return sellItem(player, item, available);
     }
 
     @Override
@@ -132,12 +174,39 @@ public final class ShopAPIImpl implements ShopAPI {
 
         int amount = hand.getAmount();
         double totalEarned = priceOpt.getAsDouble() * amount;
+        ShopCategory category = getCategoryForItem(shopItem).orElse(null);
 
-        player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-        economy.deposit(player, totalEarned);
+        ShopPreTransactionEvent preEvent = new ShopPreTransactionEvent(
+                player, shopItem, category, TransactionType.SELL, amount, totalEarned
+        );
+        Bukkit.getPluginManager().callEvent(preEvent);
+        if (preEvent.isCancelled()) {
+            return TransactionResult.CANCELLED;
+        }
 
-        record(player, shopItem, TransactionType.SELL, amount, totalEarned);
+        int finalAmount = Math.min(preEvent.getAmount(), amount);
+        double finalEarned = preEvent.getPrice();
+        if (finalAmount <= 0) {
+            return TransactionResult.CANCELLED;
+        }
+
+        if (finalAmount >= hand.getAmount()) {
+            player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
+        } else {
+            hand.setAmount(hand.getAmount() - finalAmount);
+            player.getInventory().setItemInMainHand(hand);
+        }
+
+        economy.deposit(player, finalEarned);
+
+        TransactionRecord record = record(player, shopItem, TransactionType.SELL, finalAmount, finalEarned);
         playSellSound(player);
+
+        ShopPostTransactionEvent postEvent = new ShopPostTransactionEvent(
+                player, shopItem, category, TransactionType.SELL, finalAmount, finalEarned, record
+        );
+        Bukkit.getPluginManager().callEvent(postEvent);
+
         return TransactionResult.SUCCESS;
     }
 
@@ -146,8 +215,13 @@ public final class ShopAPIImpl implements ShopAPI {
         if (!economy.isAvailable())                return QuickSellResult.NOTHING;
         if (!configManager.getMainConfig().isSellingEnabled()) return QuickSellResult.NOTHING;
 
+        ShopPreBulkSellEvent preBulk = new ShopPreBulkSellEvent(player, BulkSellSource.QUICK_SELL_INVENTORY, null);
+        Bukkit.getPluginManager().callEvent(preBulk);
+        if (preBulk.isCancelled()) return QuickSellResult.NOTHING;
+
         int totalAmount = 0;
         double totalEarned = 0;
+        Map<Material, long[]> totals = new LinkedHashMap<>();
 
         for (ShopCategory category : getCategories()) {
             for (ShopItem shopItem : category.getItems()) {
@@ -157,19 +231,50 @@ public final class ShopAPIImpl implements ShopAPI {
                 int available = countInInventory(player, shopItem.getMaterial());
                 if (available <= 0) continue;
 
-                removeFromInventory(player, shopItem.getMaterial(), available);
-                double earned = priceOpt.getAsDouble() * available;
-                economy.deposit(player, earned);
+                double plannedEarned = priceOpt.getAsDouble() * available;
+                ShopPreTransactionEvent preEvent = new ShopPreTransactionEvent(
+                        player, shopItem, category, TransactionType.SELL, available, plannedEarned
+                );
+                Bukkit.getPluginManager().callEvent(preEvent);
+                if (preEvent.isCancelled()) continue;
 
-                record(player, shopItem, TransactionType.SELL, available, earned);
-                totalAmount += available;
-                totalEarned += earned;
+                int finalAmount = Math.min(preEvent.getAmount(), available);
+                double finalEarned = preEvent.getPrice();
+                if (finalAmount <= 0) continue;
+
+                removeFromInventory(player, shopItem.getMaterial(), finalAmount);
+                economy.deposit(player, finalEarned);
+
+                TransactionRecord record = record(player, shopItem, TransactionType.SELL, finalAmount, finalEarned);
+                ShopPostTransactionEvent postEvent = new ShopPostTransactionEvent(
+                        player, shopItem, category, TransactionType.SELL, finalAmount, finalEarned, record
+                );
+                Bukkit.getPluginManager().callEvent(postEvent);
+
+                totalAmount += finalAmount;
+                totalEarned += finalEarned;
+
+                long[] line = totals.computeIfAbsent(shopItem.getMaterial(), m -> new long[2]);
+                line[0] += finalAmount;
+                line[1] += Math.round(finalEarned * 100);
             }
         }
 
         if (totalAmount > 0) {
             playSellSound(player);
-            return new QuickSellResult(true, totalAmount, totalEarned, List.of());
+            List<SoldMaterialLine> lines = new ArrayList<>();
+            for (Map.Entry<Material, long[]> entry : totals.entrySet()) {
+                lines.add(new SoldMaterialLine(
+                        entry.getKey(),
+                        (int) entry.getValue()[0],
+                        entry.getValue()[1] / 100.0
+                ));
+            }
+            ShopBulkSellEvent bulkEvent = new ShopBulkSellEvent(
+                    player, BulkSellSource.QUICK_SELL_INVENTORY, totalAmount, totalEarned, lines
+            );
+            Bukkit.getPluginManager().callEvent(bulkEvent);
+            return new QuickSellResult(true, totalAmount, totalEarned, List.copyOf(lines));
         }
         return QuickSellResult.NOTHING;
     }
@@ -178,6 +283,10 @@ public final class ShopAPIImpl implements ShopAPI {
     public QuickSellResult sellFromInventory(Player player, Inventory inventory) {
         if (!economy.isAvailable())                return QuickSellResult.NOTHING;
         if (!configManager.getMainConfig().isSellingEnabled()) return QuickSellResult.NOTHING;
+
+        ShopPreBulkSellEvent preBulk = new ShopPreBulkSellEvent(player, BulkSellSource.CONTAINER_STAFF, inventory);
+        Bukkit.getPluginManager().callEvent(preBulk);
+        if (preBulk.isCancelled()) return QuickSellResult.NOTHING;
 
         Map<Material, long[]> totals = new LinkedHashMap<>();
         int totalAmount = 0;
@@ -195,19 +304,40 @@ public final class ShopAPIImpl implements ShopAPI {
             if (priceOpt.isEmpty()) continue;
 
             int amount = stack.getAmount();
-            inventory.setItem(i, null);
+            double plannedEarned = priceOpt.getAsDouble() * amount;
+            ShopCategory category = getCategoryForItem(shopItem).orElse(null);
 
-            double earned = priceOpt.getAsDouble() * amount;
-            economy.deposit(player, earned);
-            record(player, shopItem, TransactionType.SELL, amount, earned);
+            ShopPreTransactionEvent preEvent = new ShopPreTransactionEvent(
+                    player, shopItem, category, TransactionType.SELL, amount, plannedEarned
+            );
+            Bukkit.getPluginManager().callEvent(preEvent);
+            if (preEvent.isCancelled()) continue;
 
-            Material material = stack.getType();
+            int finalAmount = Math.min(preEvent.getAmount(), amount);
+            double finalEarned = preEvent.getPrice();
+            if (finalAmount <= 0) continue;
+
+            if (finalAmount >= stack.getAmount()) {
+                inventory.setItem(i, null);
+            } else {
+                stack.setAmount(stack.getAmount() - finalAmount);
+                inventory.setItem(i, stack);
+            }
+
+            economy.deposit(player, finalEarned);
+            TransactionRecord record = record(player, shopItem, TransactionType.SELL, finalAmount, finalEarned);
+            ShopPostTransactionEvent postEvent = new ShopPostTransactionEvent(
+                    player, shopItem, category, TransactionType.SELL, finalAmount, finalEarned, record
+            );
+            Bukkit.getPluginManager().callEvent(postEvent);
+
+            Material material = shopItem.getMaterial();
             long[] line = totals.computeIfAbsent(material, m -> new long[2]);
-            line[0] += amount;
-            line[1] += Math.round(earned * 100);
+            line[0] += finalAmount;
+            line[1] += Math.round(finalEarned * 100);
 
-            totalAmount += amount;
-            totalEarned += earned;
+            totalAmount += finalAmount;
+            totalEarned += finalEarned;
         }
 
         if (totalAmount <= 0) return QuickSellResult.NOTHING;
@@ -223,6 +353,11 @@ public final class ShopAPIImpl implements ShopAPI {
             ));
         }
 
+        ShopBulkSellEvent bulkEvent = new ShopBulkSellEvent(
+                player, BulkSellSource.CONTAINER_STAFF, totalAmount, totalEarned, lines
+        );
+        Bukkit.getPluginManager().callEvent(bulkEvent);
+
         return new QuickSellResult(true, totalAmount, totalEarned, List.copyOf(lines));
     }
 
@@ -232,8 +367,13 @@ public final class ShopAPIImpl implements ShopAPI {
         if (!configManager.getMainConfig().isSellingEnabled()) return QuickSellResult.NOTHING;
         if (stacks == null || stacks.isEmpty())    return QuickSellResult.NOTHING;
 
+        ShopPreBulkSellEvent preBulk = new ShopPreBulkSellEvent(player, BulkSellSource.ITEM_STACKS, null);
+        Bukkit.getPluginManager().callEvent(preBulk);
+        if (preBulk.isCancelled()) return QuickSellResult.NOTHING;
+
         int totalAmount = 0;
         double totalEarned = 0;
+        Map<Material, long[]> totals = new LinkedHashMap<>();
 
         for (ItemStack stack : stacks) {
             if (stack == null || stack.getType().isAir()) continue;
@@ -246,17 +386,50 @@ public final class ShopAPIImpl implements ShopAPI {
             if (priceOpt.isEmpty()) continue;
 
             int amount = stack.getAmount();
-            double earned = priceOpt.getAsDouble() * amount;
-            economy.deposit(player, earned);
-            record(player, shopItem, TransactionType.SELL, amount, earned);
+            double plannedEarned = priceOpt.getAsDouble() * amount;
+            ShopCategory category = getCategoryForItem(shopItem).orElse(null);
 
-            totalAmount += amount;
-            totalEarned += earned;
+            ShopPreTransactionEvent preEvent = new ShopPreTransactionEvent(
+                    player, shopItem, category, TransactionType.SELL, amount, plannedEarned
+            );
+            Bukkit.getPluginManager().callEvent(preEvent);
+            if (preEvent.isCancelled()) continue;
+
+            int finalAmount = Math.min(preEvent.getAmount(), amount);
+            double finalEarned = preEvent.getPrice();
+            if (finalAmount <= 0) continue;
+
+            economy.deposit(player, finalEarned);
+            TransactionRecord record = record(player, shopItem, TransactionType.SELL, finalAmount, finalEarned);
+            ShopPostTransactionEvent postEvent = new ShopPostTransactionEvent(
+                    player, shopItem, category, TransactionType.SELL, finalAmount, finalEarned, record
+            );
+            Bukkit.getPluginManager().callEvent(postEvent);
+
+            totalAmount += finalAmount;
+            totalEarned += finalEarned;
+
+            Material material = shopItem.getMaterial();
+            long[] line = totals.computeIfAbsent(material, m -> new long[2]);
+            line[0] += finalAmount;
+            line[1] += Math.round(finalEarned * 100);
         }
 
         if (totalAmount > 0) {
             playSellSound(player);
-            return new QuickSellResult(true, totalAmount, totalEarned, List.of());
+            List<SoldMaterialLine> lines = new ArrayList<>();
+            for (Map.Entry<Material, long[]> entry : totals.entrySet()) {
+                lines.add(new SoldMaterialLine(
+                        entry.getKey(),
+                        (int) entry.getValue()[0],
+                        entry.getValue()[1] / 100.0
+                ));
+            }
+            ShopBulkSellEvent bulkEvent = new ShopBulkSellEvent(
+                    player, BulkSellSource.ITEM_STACKS, totalAmount, totalEarned, lines
+            );
+            Bukkit.getPluginManager().callEvent(bulkEvent);
+            return new QuickSellResult(true, totalAmount, totalEarned, List.copyOf(lines));
         }
         return QuickSellResult.NOTHING;
     }
@@ -353,7 +526,7 @@ public final class ShopAPIImpl implements ShopAPI {
         }
     }
 
-    private void record(Player player, ShopItem item, TransactionType type, int amount, double totalPrice) {
+    private TransactionRecord record(Player player, ShopItem item, TransactionType type, int amount, double totalPrice) {
         Optional<ShopCategory> catOpt = getCategoryForItem(item);
         String categoryId = catOpt.map(ShopCategory::getId).orElse("unknown");
 
@@ -368,8 +541,13 @@ public final class ShopAPIImpl implements ShopAPI {
                 Instant.now()
         );
 
-        analyticsManager.record(record);
-        transactionLogger.log(record);
+        if (analyticsManager != null) {
+            analyticsManager.record(record);
+        }
+        if (transactionLogger != null) {
+            transactionLogger.log(record);
+        }
+        return record;
     }
 
     private void playSellSound(Player player) {

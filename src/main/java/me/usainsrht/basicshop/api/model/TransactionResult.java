@@ -26,5 +26,8 @@ public enum TransactionResult {
     GLOBAL_SELL_DISABLED,
 
     /** The economy provider is not available. */
-    ECONOMY_UNAVAILABLE
+    ECONOMY_UNAVAILABLE,
+
+    /** The transaction was cancelled by a 3rd party plugin via {@link me.usainsrht.basicshop.api.event.ShopPreTransactionEvent}. */
+    CANCELLED
 }
