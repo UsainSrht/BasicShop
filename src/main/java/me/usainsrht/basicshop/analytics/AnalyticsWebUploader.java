@@ -44,7 +44,11 @@ public final class AnalyticsWebUploader {
     private final ConfigManager configManager;
     private final TopSellersEngine topSellersEngine;
 
-    public record UploadResult(boolean success, String url, String id, int expirationDays, String error) {}
+    public record UploadResult(boolean success, String url, String id, int expirationHours, String error) {
+        public int expirationDays() {
+            return (int) Math.ceil(expirationHours / 24.0);
+        }
+    }
 
     public AnalyticsWebUploader(Plugin plugin, ConfigManager configManager, TopSellersEngine topSellersEngine) {
         this.plugin = plugin;
@@ -96,7 +100,8 @@ public final class AnalyticsWebUploader {
                     JsonObject respObj = GSON.fromJson(response.body(), JsonObject.class);
                     String id = respObj.has("id") ? respObj.get("id").getAsString() : "";
                     String viewUrl = respObj.has("url") ? respObj.get("url").getAsString() : (targetUrl + "/view/" + id);
-                    int exp = respObj.has("expirationDays") ? respObj.get("expirationDays").getAsInt() : web.expirationDays();
+                    int exp = respObj.has("expirationHours") ? respObj.get("expirationHours").getAsInt() :
+                              (respObj.has("expirationDays") ? respObj.get("expirationDays").getAsInt() * 24 : web.expirationHours());
                     return new UploadResult(true, viewUrl, id, exp, null);
                 } else {
                     String err = "HTTP " + response.statusCode() + ": " + response.body();
@@ -119,6 +124,7 @@ public final class AnalyticsWebUploader {
         root.addProperty("daysAnalyzed", days);
         root.addProperty("startDate", LocalDate.now().minusDays(days - 1).toString());
         root.addProperty("endDate", LocalDate.now().toString());
+        root.addProperty("expirationHours", configManager.getMainConfig().getAnalyticsSettings().web().expirationHours());
         root.addProperty("expirationDays", configManager.getMainConfig().getAnalyticsSettings().web().expirationDays());
 
         // KPIs
@@ -134,6 +140,8 @@ public final class AnalyticsWebUploader {
         int[] hourlyDistribution = new int[24];
 
         for (TransactionRecord r : records) {
+            String dateStr = r.getTimestamp().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE);
+
             if (r.getType() == TransactionType.BUY) {
                 totalBought += r.getTotalPrice();
                 unitsBought += r.getAmount();
@@ -144,25 +152,57 @@ public final class AnalyticsWebUploader {
 
             // Item stats
             ItemStats is = itemMap.computeIfAbsent(r.getItemId(), k -> new ItemStats(r.getItemId(), r.getCategoryId()));
+            ItemPlayerStats ips = is.traders.computeIfAbsent(r.getPlayerId().toString(), k -> new ItemPlayerStats(r.getPlayerId().toString(), r.getPlayerName()));
+            DayStats itemDay = is.timeline.computeIfAbsent(dateStr, DayStats::new);
+
             if (r.getType() == TransactionType.BUY) {
                 is.boughtUnits += r.getAmount();
                 is.boughtMoney += r.getTotalPrice();
+                ips.boughtUnits += r.getAmount();
+                ips.spent += r.getTotalPrice();
+                itemDay.buyUnits += r.getAmount();
+                itemDay.buyMoney += r.getTotalPrice();
             } else {
                 is.soldUnits += r.getAmount();
                 is.soldMoney += r.getTotalPrice();
+                ips.soldUnits += r.getAmount();
+                ips.earned += r.getTotalPrice();
+                itemDay.sellUnits += r.getAmount();
+                itemDay.sellMoney += r.getTotalPrice();
             }
             is.txCount++;
+            ips.txCount++;
+            itemDay.transactions++;
 
             // Player stats
             PlayerStats ps = playerMap.computeIfAbsent(r.getPlayerId().toString(), k -> new PlayerStats(r.getPlayerId().toString(), r.getPlayerName()));
+            PlayerItemStats pis = ps.items.computeIfAbsent(r.getItemId(), k -> new PlayerItemStats(r.getItemId(), r.getCategoryId()));
+            CategoryStats cs = ps.categories.computeIfAbsent(r.getCategoryId(), CategoryStats::new);
+            DayStats playerDay = ps.timeline.computeIfAbsent(dateStr, DayStats::new);
+
             if (r.getType() == TransactionType.BUY) {
                 ps.spent += r.getTotalPrice();
                 ps.boughtUnits += r.getAmount();
+                pis.boughtUnits += r.getAmount();
+                pis.spent += r.getTotalPrice();
+                cs.spent += r.getTotalPrice();
+                cs.units += r.getAmount();
+                playerDay.buyMoney += r.getTotalPrice();
+                playerDay.buyUnits += r.getAmount();
             } else {
                 ps.earned += r.getTotalPrice();
                 ps.soldUnits += r.getAmount();
+                pis.soldUnits += r.getAmount();
+                pis.earned += r.getTotalPrice();
+                cs.earned += r.getTotalPrice();
+                cs.units += r.getAmount();
+                playerDay.sellMoney += r.getTotalPrice();
+                playerDay.sellUnits += r.getAmount();
             }
             ps.txCount++;
+            pis.txCount++;
+            cs.txCount++;
+            playerDay.transactions++;
 
             // Hourly distribution (in server local time)
             int hour = r.getTimestamp().atZone(ZoneId.systemDefault()).getHour();
@@ -170,8 +210,7 @@ public final class AnalyticsWebUploader {
                 hourlyDistribution[hour]++;
             }
 
-            // Day timeline
-            String dateStr = r.getTimestamp().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            // Overall Day timeline
             DayStats ds = dayMap.computeIfAbsent(dateStr, DayStats::new);
             if (r.getType() == TransactionType.BUY) {
                 ds.buyMoney += r.getTotalPrice();
@@ -231,6 +270,41 @@ public final class AnalyticsWebUploader {
             io.addProperty("boughtUnits", is.boughtUnits);
             io.addProperty("boughtMoney", is.boughtMoney);
             io.addProperty("transactions", is.txCount);
+
+            // Item Top Traders
+            JsonArray itemTradersArr = new JsonArray();
+            List<ItemPlayerStats> sortedItemTraders = new ArrayList<>(is.traders.values());
+            sortedItemTraders.sort((a, b) -> Double.compare(b.spent + b.earned, a.spent + a.earned));
+            for (ItemPlayerStats ips : sortedItemTraders) {
+                JsonObject ipsObj = new JsonObject();
+                ipsObj.addProperty("uuid", ips.uuid);
+                ipsObj.addProperty("name", ips.name);
+                ipsObj.addProperty("boughtUnits", ips.boughtUnits);
+                ipsObj.addProperty("soldUnits", ips.soldUnits);
+                ipsObj.addProperty("spent", ips.spent);
+                ipsObj.addProperty("earned", ips.earned);
+                ipsObj.addProperty("transactions", ips.txCount);
+                itemTradersArr.add(ipsObj);
+            }
+            io.add("topTraders", itemTradersArr);
+
+            // Item Timeline
+            JsonArray itemTimelineArr = new JsonArray();
+            List<String> sortedItemDates = new ArrayList<>(is.timeline.keySet());
+            Collections.sort(sortedItemDates);
+            for (String d : sortedItemDates) {
+                DayStats ids = is.timeline.get(d);
+                JsonObject idObj = new JsonObject();
+                idObj.addProperty("date", ids.date);
+                idObj.addProperty("buyMoney", ids.buyMoney);
+                idObj.addProperty("sellMoney", ids.sellMoney);
+                idObj.addProperty("buyUnits", ids.buyUnits);
+                idObj.addProperty("sellUnits", ids.sellUnits);
+                idObj.addProperty("transactions", ids.transactions);
+                itemTimelineArr.add(idObj);
+            }
+            io.add("timeline", itemTimelineArr);
+
             itemsArr.add(io);
         }
         root.add("items", itemsArr);
@@ -248,13 +322,61 @@ public final class AnalyticsWebUploader {
             po.addProperty("spent", ps.spent);
             po.addProperty("earned", ps.earned);
             po.addProperty("net", ps.earned - ps.spent);
+
+            // Player Categories
+            JsonArray catArr = new JsonArray();
+            for (CategoryStats cs : ps.categories.values()) {
+                JsonObject cObj = new JsonObject();
+                cObj.addProperty("categoryId", cs.categoryId);
+                cObj.addProperty("spent", cs.spent);
+                cObj.addProperty("earned", cs.earned);
+                cObj.addProperty("units", cs.units);
+                cObj.addProperty("transactions", cs.txCount);
+                catArr.add(cObj);
+            }
+            po.add("categories", catArr);
+
+            // Player Items
+            JsonArray playerItemsArr = new JsonArray();
+            List<PlayerItemStats> sortedPlayerItems = new ArrayList<>(ps.items.values());
+            sortedPlayerItems.sort((a, b) -> Double.compare(b.spent + b.earned, a.spent + a.earned));
+            for (PlayerItemStats pis : sortedPlayerItems) {
+                JsonObject piObj = new JsonObject();
+                piObj.addProperty("itemId", pis.itemId);
+                piObj.addProperty("categoryId", pis.categoryId);
+                piObj.addProperty("boughtUnits", pis.boughtUnits);
+                piObj.addProperty("soldUnits", pis.soldUnits);
+                piObj.addProperty("spent", pis.spent);
+                piObj.addProperty("earned", pis.earned);
+                piObj.addProperty("transactions", pis.txCount);
+                playerItemsArr.add(piObj);
+            }
+            po.add("topItems", playerItemsArr);
+
+            // Player Timeline
+            JsonArray playerTimelineArr = new JsonArray();
+            List<String> sortedPlayerDates = new ArrayList<>(ps.timeline.keySet());
+            Collections.sort(sortedPlayerDates);
+            for (String d : sortedPlayerDates) {
+                DayStats pds = ps.timeline.get(d);
+                JsonObject pdObj = new JsonObject();
+                pdObj.addProperty("date", pds.date);
+                pdObj.addProperty("buyMoney", pds.buyMoney);
+                pdObj.addProperty("sellMoney", pds.sellMoney);
+                pdObj.addProperty("buyUnits", pds.buyUnits);
+                pdObj.addProperty("sellUnits", pds.sellUnits);
+                pdObj.addProperty("transactions", pds.transactions);
+                playerTimelineArr.add(pdObj);
+            }
+            po.add("timeline", playerTimelineArr);
+
             playersArr.add(po);
         }
         root.add("players", playersArr);
 
-        // Recent Transactions (up to 200 most recent for detailed inspection)
+        // Recent Transactions (up to 1000 most recent for detailed inspection)
         JsonArray txArr = new JsonArray();
-        int maxRecords = Math.min(records.size(), 200);
+        int maxRecords = Math.min(records.size(), 1000);
         for (int i = records.size() - 1; i >= records.size() - maxRecords; i--) {
             TransactionRecord r = records.get(i);
             JsonObject to = new JsonObject();
@@ -289,10 +411,27 @@ public final class AnalyticsWebUploader {
         long boughtUnits;
         double boughtMoney;
         int txCount;
+        final Map<String, ItemPlayerStats> traders = new HashMap<>();
+        final Map<String, DayStats> timeline = new HashMap<>();
 
         ItemStats(String itemId, String categoryId) {
             this.itemId = itemId;
             this.categoryId = categoryId;
+        }
+    }
+
+    private static class ItemPlayerStats {
+        final String uuid;
+        final String name;
+        long boughtUnits;
+        long soldUnits;
+        double spent;
+        double earned;
+        int txCount;
+
+        ItemPlayerStats(String uuid, String name) {
+            this.uuid = uuid;
+            this.name = name;
         }
     }
 
@@ -304,10 +443,40 @@ public final class AnalyticsWebUploader {
         long boughtUnits;
         long soldUnits;
         int txCount;
+        final Map<String, PlayerItemStats> items = new HashMap<>();
+        final Map<String, CategoryStats> categories = new HashMap<>();
+        final Map<String, DayStats> timeline = new HashMap<>();
 
         PlayerStats(String uuid, String name) {
             this.uuid = uuid;
             this.name = name;
+        }
+    }
+
+    private static class PlayerItemStats {
+        final String itemId;
+        final String categoryId;
+        long boughtUnits;
+        long soldUnits;
+        double spent;
+        double earned;
+        int txCount;
+
+        PlayerItemStats(String itemId, String categoryId) {
+            this.itemId = itemId;
+            this.categoryId = categoryId;
+        }
+    }
+
+    private static class CategoryStats {
+        final String categoryId;
+        double spent;
+        double earned;
+        long units;
+        int txCount;
+
+        CategoryStats(String categoryId) {
+            this.categoryId = categoryId;
         }
     }
 

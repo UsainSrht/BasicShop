@@ -120,7 +120,7 @@ async function handleUpload(request, env, url) {
     typeof payload !== "object" ||
     !payload.version ||
     !payload.generatedAt ||
-    (!Array.isArray(payload.transactions) && !Array.isArray(payload.topItems))
+    (!Array.isArray(payload.transactions) && !Array.isArray(payload.topItems) && !Array.isArray(payload.items))
   ) {
     return new Response(JSON.stringify({ error: "Invalid payload: Not a recognized BasicShop analytics report" }), {
       status: 400,
@@ -131,10 +131,14 @@ async function handleUpload(request, env, url) {
   // Generate short unique identifier (8 characters)
   const id = crypto.randomUUID().split("-")[0];
 
-  // Enforce TTL: minimum 1 day, maximum 7 days (default 3 days)
-  const rawExp = parseInt(payload.expirationDays, 10);
-  const expirationDays = Math.min(7, Math.max(1, isNaN(rawExp) ? 3 : rawExp));
-  const ttlSeconds = expirationDays * 86400;
+  // Enforce TTL in hours: minimum 1 hour, maximum 168 hours (7 days), default 1 hour
+  let expHours = parseInt(payload.expirationHours, 10);
+  if (isNaN(expHours) || expHours <= 0) {
+    const rawDays = parseInt(payload.expirationDays, 10);
+    expHours = !isNaN(rawDays) && rawDays > 0 ? rawDays * 24 : 1;
+  }
+  expHours = Math.min(168, Math.max(1, expHours));
+  const ttlSeconds = expHours * 3600;
 
   // Store in Cloudflare KV with TTL
   if (!env.ANALYTICS_KV) {
@@ -154,7 +158,8 @@ async function handleUpload(request, env, url) {
     JSON.stringify({
       id: id,
       url: viewUrl,
-      expirationDays: expirationDays,
+      expirationHours: expHours,
+      expirationDays: Math.ceil(expHours / 24),
       expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
     }),
     {
@@ -332,6 +337,10 @@ function renderDashboardHtml(initialId, origin) {
     }
     .btn-primary:hover {
       background: var(--primary-hover);
+    }
+    .btn-sm {
+      padding: 0.3rem 0.65rem;
+      font-size: 0.78rem;
     }
 
     /* Container */
@@ -513,7 +522,13 @@ function renderDashboardHtml(initialId, origin) {
       color: #fff;
       border-color: var(--border-accent);
     }
-    .search-box {
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .search-box, .filter-select {
       background: var(--bg-surface-elevated);
       border: 1px solid var(--border-subtle);
       border-radius: 8px;
@@ -521,9 +536,14 @@ function renderDashboardHtml(initialId, origin) {
       color: #fff;
       font-size: 0.85rem;
       outline: none;
-      width: 220px;
+      transition: border-color 0.2s;
     }
-    .search-box:focus {
+    .search-box { width: 220px; }
+    .filter-select {
+      max-width: 200px;
+      cursor: pointer;
+    }
+    .search-box:focus, .filter-select:focus {
       border-color: var(--primary);
     }
 
@@ -550,8 +570,12 @@ function renderDashboardHtml(initialId, origin) {
       border-bottom: 1px solid rgba(255, 255, 255, 0.03);
       vertical-align: middle;
     }
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+    tr.clickable-row {
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    tr.clickable-row:hover td {
+      background: rgba(99, 102, 241, 0.08);
     }
     .rank-badge {
       display: inline-flex;
@@ -569,16 +593,61 @@ function renderDashboardHtml(initialId, origin) {
     .rank-2 { background: rgba(148, 163, 184, 0.2); color: #e2e8f0; border: 1px solid rgba(148, 163, 184, 0.4); }
     .rank-3 { background: rgba(180, 83, 9, 0.2); color: #d97706; border: 1px solid rgba(180, 83, 9, 0.4); }
 
+    /* Pixelated image rendering for Minecraft assets */
+    .pixelated {
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+    }
+
+    .item-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .item-img-wrap {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 2px;
+    }
+    .item-img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+    .item-names {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+    }
+    .item-title {
+      font-weight: 600;
+      color: #fff;
+    }
+    .item-id-sub {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
     .player-cell {
       display: flex;
       align-items: center;
-      gap: 0.7rem;
+      gap: 0.75rem;
     }
     .player-avatar {
       width: 28px;
       height: 28px;
       border-radius: 6px;
-      image-rendering: pixelated;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
     }
     .tag-buy {
       color: var(--accent-amber);
@@ -595,6 +664,117 @@ function renderDashboardHtml(initialId, origin) {
       border-radius: 6px;
       font-size: 0.75rem;
       font-weight: 600;
+    }
+    .category-pill {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      background: rgba(99, 102, 241, 0.12);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .modal-backdrop.show {
+      display: flex;
+      opacity: 1;
+    }
+    .modal-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 900px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.25s ease;
+      overflow: hidden;
+    }
+    .modal-backdrop.show .modal-container {
+      transform: scale(1);
+    }
+    .modal-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(17, 24, 39, 0.8);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .modal-header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .modal-header-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 4px;
+    }
+    .modal-header-icon img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    .modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .modal-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.6rem;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+    .modal-body {
+      padding: 1.5rem 1.75rem;
+      overflow-y: auto;
+      flex: 1;
     }
 
     /* Toast Notification */
@@ -613,7 +793,7 @@ function renderDashboardHtml(initialId, origin) {
       transform: translateY(10px);
       transition: all 0.3s ease;
       pointer-events: none;
-      z-index: 100;
+      z-index: 300;
     }
     #toast.show {
       opacity: 1;
@@ -675,7 +855,7 @@ function renderDashboardHtml(initialId, origin) {
     <div class="meta-card">
       <div class="meta-info">
         <h1 id="serverTitle">Minecraft Server</h1>
-        <p class="meta-subtitle" id="dateRangeText">Analyzing past 7 days</p>
+        <p class="meta-subtitle" id="dateRangeText">Analyzing shop economy</p>
       </div>
       <div style="display: flex; gap: 0.5rem; align-items: center;">
         <div class="badge-pill" id="expiryBadge">Active Report</div>
@@ -692,12 +872,12 @@ function renderDashboardHtml(initialId, origin) {
       <div class="kpi-card">
         <div class="kpi-title">Player Sales (Payouts)</div>
         <div class="kpi-value" id="kpiTotalSold">$0.00</div>
-        <div class="kpi-subtext" id="kpiSoldUnits">0 items sold to shop</div>
+        <div class="kpi-subtext" id="kpiSoldUnits">0 units sold to shop</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-title">Player Purchases</div>
         <div class="kpi-value gold" id="kpiTotalBought">$0.00</div>
-        <div class="kpi-subtext" id="kpiBoughtUnits">0 items bought from shop</div>
+        <div class="kpi-subtext" id="kpiBoughtUnits">0 units bought by players</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-title">Net Economy Delta</div>
@@ -759,7 +939,25 @@ function renderDashboardHtml(initialId, origin) {
           <button class="tab-btn" data-tab="tabPlayers">Top Traders</button>
           <button class="tab-btn" data-tab="tabLogs">Recent Transactions</button>
         </div>
-        <input type="text" class="search-box" id="tableSearch" placeholder="Search table..." />
+        <div class="filter-bar">
+          <!-- Item Tab Player Filter -->
+          <div id="playerFilterContainer" style="display: flex; align-items: center; gap: 0.4rem;">
+            <select id="itemPlayerFilter" class="filter-select">
+              <option value="">All Players</option>
+            </select>
+            <button id="btnResetItemPlayerFilter" class="btn btn-sm" style="display: none;">Reset</button>
+          </div>
+
+          <!-- Trader Tab Item Filter -->
+          <div id="itemFilterContainer" style="display: none; align-items: center; gap: 0.4rem;">
+            <select id="traderItemFilter" class="filter-select">
+              <option value="">All Items</option>
+            </select>
+            <button id="btnResetTraderItemFilter" class="btn btn-sm" style="display: none;">Reset</button>
+          </div>
+
+          <input type="text" class="search-box" id="tableSearch" placeholder="Search table..." />
+        </div>
       </div>
 
       <!-- Tab: Top Items -->
@@ -823,13 +1021,290 @@ function renderDashboardHtml(initialId, origin) {
     </div>
   </main>
 
+  <!-- Dedicated Item Analytics Modal -->
+  <div id="itemModal" class="modal-backdrop">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <div class="modal-header-icon" id="itemModalIcon"></div>
+          <div>
+            <div class="modal-title" id="itemModalTitle">Item Details</div>
+            <div class="modal-subtitle" id="itemModalSubtitle">minecraft:item</div>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeItemModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+          <div class="kpi-card">
+            <div class="kpi-title">Gross Volume</div>
+            <div class="kpi-value green" id="itemModalTurnover">$0.00</div>
+            <div class="kpi-subtext" id="itemModalTotalUnits">0 units</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Sold Payouts</div>
+            <div class="kpi-value" id="itemModalSoldMoney">$0.00</div>
+            <div class="kpi-subtext" id="itemModalSoldUnits">0 sold</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Bought Spend</div>
+            <div class="kpi-value gold" id="itemModalBoughtMoney">$0.00</div>
+            <div class="kpi-subtext" id="itemModalBoughtUnits">0 bought</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Transactions</div>
+            <div class="kpi-value purple" id="itemModalTx">0</div>
+            <div class="kpi-subtext" id="itemModalUniquePlayers">0 players</div>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom: 1.5rem;">
+          <div class="chart-header">
+            <div class="chart-title">Item Activity Timeline</div>
+          </div>
+          <div class="chart-container" style="min-height: 220px;">
+            <canvas id="itemModalTimelineChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom: 1.5rem;">
+          <div class="chart-header">
+            <div class="chart-title">Top Players for this Item</div>
+            <span class="badge-pill" style="font-size:0.72rem;">Click player to inspect</span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Units Bought</th>
+                  <th>Spent</th>
+                  <th>Units Sold</th>
+                  <th>Earned</th>
+                  <th>Transactions</th>
+                </tr>
+              </thead>
+              <tbody id="itemModalTradersBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Recent Transactions for this Item</div>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>Player</th>
+                  <th>Amount</th>
+                  <th>Total Price</th>
+                </tr>
+              </thead>
+              <tbody id="itemModalLogsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dedicated Player Analytics Modal -->
+  <div id="playerModal" class="modal-backdrop">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <div class="modal-header-icon" id="playerModalIcon"></div>
+          <div>
+            <div class="modal-title" id="playerModalTitle">Player Details</div>
+            <div class="modal-subtitle" id="playerModalSubtitle">UUID</div>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closePlayerModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+          <div class="kpi-card">
+            <div class="kpi-title">Total Spent</div>
+            <div class="kpi-value gold" id="playerModalSpent">$0.00</div>
+            <div class="kpi-subtext">Shop purchases</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Total Earned</div>
+            <div class="kpi-value green" id="playerModalEarned">$0.00</div>
+            <div class="kpi-subtext">Shop payouts</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Net Balance Delta</div>
+            <div class="kpi-value" id="playerModalNet">$0.00</div>
+            <div class="kpi-subtext">Earned minus spent</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-title">Transactions</div>
+            <div class="kpi-value purple" id="playerModalTx">0</div>
+            <div class="kpi-subtext" id="playerModalTradedItemsCount">0 items traded</div>
+          </div>
+        </div>
+
+        <div class="charts-grid" style="margin-bottom: 1.5rem;">
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">Player Timeline</div>
+            </div>
+            <div class="chart-container" style="min-height: 200px;">
+              <canvas id="playerModalTimelineChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">Categories Traded</div>
+            </div>
+            <div class="chart-container" style="min-height: 200px;">
+              <canvas id="playerModalCategoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom: 1.5rem;">
+          <div class="chart-header">
+            <div class="chart-title">Items Traded by this Player</div>
+            <span class="badge-pill" style="font-size:0.72rem;">Click item to inspect</span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Units Bought</th>
+                  <th>Spent</th>
+                  <th>Units Sold</th>
+                  <th>Earned</th>
+                  <th>Transactions</th>
+                </tr>
+              </thead>
+              <tbody id="playerModalItemsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Recent Transactions for this Player</div>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>Item</th>
+                  <th>Amount</th>
+                  <th>Total Price</th>
+                </tr>
+              </thead>
+              <tbody id="playerModalLogsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     let reportData = null;
+    let selectedItemPlayer = "";
+    let selectedTraderItem = "";
+    let itemModalChartInstance = null;
+    let playerModalTimelineChartInstance = null;
+    let playerModalCategoryChartInstance = null;
     const initialReportId = "${initialId}";
 
     function formatMoney(n) {
       return "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+
+    // Minecraft Item Image Helpers
+    function getItemRawName(itemId) {
+      if (!itemId) return "chest";
+      let name = itemId;
+      if (name.includes(":")) {
+        const parts = name.split(":");
+        name = parts[parts.length - 1];
+      }
+      return name.toLowerCase().trim();
+    }
+
+    function formatItemDisplayName(itemId) {
+      const raw = getItemRawName(itemId);
+      return raw
+        .split("_")
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
+
+    function getItemImgHtml(itemId, size = 28) {
+      const raw = getItemRawName(itemId);
+      const title = formatItemDisplayName(itemId);
+      const initialSrc = "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/" + raw + ".png";
+      return '<div class="item-img-wrap" style="width:' + (size + 6) + 'px; height:' + (size + 6) + 'px;">' +
+        '<img class="item-img pixelated" ' +
+        'src="' + initialSrc + '" ' +
+        'alt="' + title + '" ' +
+        'loading="lazy" ' +
+        'decoding="async" ' +
+        'width="' + size + '" ' +
+        'height="' + size + '" ' +
+        'data-raw-name="' + raw + '" ' +
+        'data-step="0" ' +
+        'onerror="handleItemImgError(this)" />' +
+        '</div>';
+    }
+
+    window.handleItemImgError = function(img) {
+      const raw = img.dataset.rawName || "chest";
+      const step = parseInt(img.dataset.step || "0", 10);
+      if (step === 0) {
+        img.dataset.step = "1";
+        img.src = "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/" + raw + ".png";
+      } else if (step === 1) {
+        img.dataset.step = "2";
+        img.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.21.1/assets/minecraft/textures/item/" + raw + ".png";
+      } else if (step === 2) {
+        img.dataset.step = "3";
+        img.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.21.1/assets/minecraft/textures/block/" + raw + ".png";
+      } else {
+        img.onerror = null;
+        img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e293b' stroke='%23334155' stroke-width='2'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='%23818cf8' font-family='sans-serif' font-weight='bold' font-size='14'%3E%3F%3C/text%3E%3C/svg%3E";
+      }
+    };
+
+    function getPlayerAvatarHtml(uuid, name, size = 28) {
+      const key = uuid || name || "Steve";
+      const src = "https://crafthead.net/avatar/" + encodeURIComponent(key) + "/" + size;
+      return '<img class="player-avatar pixelated" ' +
+        'src="' + src + '" ' +
+        'alt="' + (name || "Player") + '" ' +
+        'loading="lazy" ' +
+        'decoding="async" ' +
+        'width="' + size + '" ' +
+        'height="' + size + '" ' +
+        'data-key="' + encodeURIComponent(key) + '" ' +
+        'onerror="handlePlayerAvatarError(this)" />';
+    }
+
+    window.handlePlayerAvatarError = function(img) {
+      const key = img.dataset.key || "Steve";
+      if (!img.dataset.fallback) {
+        img.dataset.fallback = "1";
+        img.src = "https://mc-heads.net/avatar/" + key + "/32";
+      } else {
+        img.onerror = null;
+        img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e293b' stroke='%23334155' stroke-width='2'/%3E%3Ccircle cx='16' cy='12' r='6' fill='%23818cf8'/%3E%3Cpath d='M6 28 c0 -6 5 -9 10 -9 s10 3 10 9' fill='%23818cf8'/%3E%3C/svg%3E";
+      }
+    };
 
     async function loadData() {
       const id = initialReportId || new URLSearchParams(window.location.search).get("id");
@@ -857,15 +1332,17 @@ function renderDashboardHtml(initialId, origin) {
       document.getElementById("dateRangeText").textContent =
         "Analyzed " + (data.daysAnalyzed || 7) + " days (" + (data.startDate || "") + " to " + (data.endDate || "") + ")";
 
-      if (data.expirationDays) {
-        document.getElementById("expiryBadge").textContent = "Expires in " + data.expirationDays + " days";
+      if (data.expirationHours) {
+        document.getElementById("expiryBadge").textContent = "Expires in " + data.expirationHours + " hour(s)";
+      } else if (data.expirationDays) {
+        document.getElementById("expiryBadge").textContent = "Expires in " + data.expirationDays + " day(s)";
       }
 
       // KPIs
       const sum = data.summary || {};
       const gross = (sum.totalBoughtMoney || 0) + (sum.totalSoldMoney || 0);
       document.getElementById("kpiGrossTurnover").textContent = formatMoney(gross);
-      document.getElementById("kpiTotalUnits").textContent = Number(sum.totalUnitsTraded || 0).toLocaleString() + " items traded";
+      document.getElementById("kpiTotalUnits").textContent = Number(sum.totalUnitsTraded || 0).toLocaleString() + " units traded";
 
       document.getElementById("kpiTotalSold").textContent = formatMoney(sum.totalSoldMoney || 0);
       document.getElementById("kpiSoldUnits").textContent = Number(sum.totalUnitsSold || 0).toLocaleString() + " units sold to shop";
@@ -883,14 +1360,56 @@ function renderDashboardHtml(initialId, origin) {
 
       // Render Charts
       renderTimelineChart(data.timeline || []);
-      renderCategoryChart(data.items || []);
-      renderTopItemsChart(data.items || []);
+      renderCategoryChart(data.items || data.topItems || []);
+      renderTopItemsChart(data.items || data.topItems || []);
       renderHourlyChart(data.hourlyDistribution || []);
 
+      // Populate filter dropdowns
+      populateFilters(data);
+
       // Render Tables
-      renderItemsTable(data.items || []);
-      renderPlayersTable(data.players || []);
+      renderItemsTable();
+      renderPlayersTable();
       renderLogsTable(data.recentTransactions || []);
+    }
+
+    function populateFilters(data) {
+      // 1. Player filter dropdown for Items tab
+      const pSelect = document.getElementById("itemPlayerFilter");
+      pSelect.innerHTML = '<option value="">All Players</option>' +
+        (data.players || []).map(p => '<option value="' + (p.uuid || p.name) + '">' + p.name + '</option>').join('');
+
+      pSelect.addEventListener("change", (e) => {
+        selectedItemPlayer = e.target.value;
+        document.getElementById("btnResetItemPlayerFilter").style.display = selectedItemPlayer ? "inline-flex" : "none";
+        renderItemsTable();
+      });
+
+      document.getElementById("btnResetItemPlayerFilter").addEventListener("click", () => {
+        pSelect.value = "";
+        selectedItemPlayer = "";
+        document.getElementById("btnResetItemPlayerFilter").style.display = "none";
+        renderItemsTable();
+      });
+
+      // 2. Item filter dropdown for Traders tab
+      const iSelect = document.getElementById("traderItemFilter");
+      const itemsList = data.items || data.topItems || [];
+      iSelect.innerHTML = '<option value="">All Items</option>' +
+        itemsList.map(it => '<option value="' + it.itemId + '">' + formatItemDisplayName(it.itemId) + '</option>').join('');
+
+      iSelect.addEventListener("change", (e) => {
+        selectedTraderItem = e.target.value;
+        document.getElementById("btnResetTraderItemFilter").style.display = selectedTraderItem ? "inline-flex" : "none";
+        renderPlayersTable();
+      });
+
+      document.getElementById("btnResetTraderItemFilter").addEventListener("click", () => {
+        iSelect.value = "";
+        selectedTraderItem = "";
+        document.getElementById("btnResetTraderItemFilter").style.display = "none";
+        renderPlayersTable();
+      });
     }
 
     function renderTimelineChart(timeline) {
@@ -969,7 +1488,7 @@ function renderDashboardHtml(initialId, origin) {
 
     function renderTopItemsChart(items) {
       const sorted = [...items].sort((a,b) => (b.soldMoney || 0) - (a.soldMoney || 0)).slice(0, 10);
-      const labels = sorted.map(it => it.itemId.split(':').pop());
+      const labels = sorted.map(it => formatItemDisplayName(it.itemId));
       const data = sorted.map(it => it.soldMoney || 0);
       const ctx = document.getElementById("topItemsChart").getContext("2d");
 
@@ -1024,16 +1543,49 @@ function renderDashboardHtml(initialId, origin) {
       });
     }
 
-    function renderItemsTable(items) {
+    function renderItemsTable() {
+      if (!reportData) return;
+      const allItems = reportData.items || reportData.topItems || [];
       const tbody = document.getElementById("itemsTableBody");
-      tbody.innerHTML = items.map((it, idx) => {
+
+      let displayList = [];
+      if (selectedItemPlayer) {
+        // Find player
+        const player = (reportData.players || []).find(p => p.uuid === selectedItemPlayer || p.name === selectedItemPlayer);
+        if (player && Array.isArray(player.topItems)) {
+          displayList = player.topItems.map(pi => {
+            const fullItem = allItems.find(it => it.itemId === pi.itemId) || {};
+            return {
+              itemId: pi.itemId,
+              categoryId: pi.categoryId || fullItem.categoryId || "-",
+              soldUnits: pi.soldUnits || 0,
+              soldMoney: pi.earned || 0,
+              boughtUnits: pi.boughtUnits || 0,
+              boughtMoney: pi.spent || 0,
+              transactions: pi.transactions || 0
+            };
+          });
+        }
+      } else {
+        displayList = allItems;
+      }
+
+      if (displayList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">No items found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = displayList.map((it, idx) => {
         const rank = idx + 1;
         const rankClass = rank <= 3 ? 'rank-' + rank : '';
         const total = (it.soldMoney || 0) + (it.boughtMoney || 0);
-        return '<tr>' +
+        const displayName = formatItemDisplayName(it.itemId);
+        const imgHtml = getItemImgHtml(it.itemId, 28);
+
+        return '<tr class="clickable-row" onclick="openItemModal(\\'' + it.itemId + '\\')">' +
           '<td><span class="rank-badge ' + rankClass + '">' + rank + '</span></td>' +
-          '<td style="font-weight:600;">' + it.itemId + '</td>' +
-          '<td><span style="color:var(--text-dim);">' + (it.categoryId || "-") + '</span></td>' +
+          '<td><div class="item-cell">' + imgHtml + '<div class="item-names"><span class="item-title">' + displayName + '</span><span class="item-id-sub">' + it.itemId + '</span></div></div></td>' +
+          '<td><span class="category-pill">' + (it.categoryId || "-") + '</span></td>' +
           '<td>' + Number(it.soldUnits || 0).toLocaleString() + '</td>' +
           '<td style="color:var(--accent-emerald); font-weight:600;">' + formatMoney(it.soldMoney) + '</td>' +
           '<td>' + Number(it.boughtUnits || 0).toLocaleString() + '</td>' +
@@ -1043,18 +1595,43 @@ function renderDashboardHtml(initialId, origin) {
       }).join('');
     }
 
-    function renderPlayersTable(players) {
+    function renderPlayersTable() {
+      if (!reportData) return;
+      const allPlayers = reportData.players || [];
       const tbody = document.getElementById("playersTableBody");
-      tbody.innerHTML = players.map((p, idx) => {
+
+      let displayList = [];
+      if (selectedTraderItem) {
+        // Find item
+        const item = (reportData.items || reportData.topItems || []).find(it => it.itemId === selectedTraderItem);
+        if (item && Array.isArray(item.topTraders)) {
+          displayList = item.topTraders.map(tr => ({
+            uuid: tr.uuid,
+            name: tr.name,
+            transactions: tr.transactions || 0,
+            spent: tr.spent || 0,
+            earned: tr.earned || 0
+          }));
+        }
+      } else {
+        displayList = allPlayers;
+      }
+
+      if (displayList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">No traders found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = displayList.map((p, idx) => {
         const rank = idx + 1;
         const rankClass = rank <= 3 ? 'rank-' + rank : '';
         const net = (p.earned || 0) - (p.spent || 0);
         const netColor = net >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)';
-        const avatarUrl = "https://crafthead.net/avatar/" + (p.uuid || p.name);
+        const avatarHtml = getPlayerAvatarHtml(p.uuid, p.name, 28);
 
-        return '<tr>' +
+        return '<tr class="clickable-row" onclick="openPlayerModal(\\'' + (p.uuid || p.name) + '\\')">' +
           '<td><span class="rank-badge ' + rankClass + '">' + rank + '</span></td>' +
-          '<td><div class="player-cell"><img class="player-avatar" src="' + avatarUrl + '" alt="" /><span>' + p.name + '</span></div></td>' +
+          '<td><div class="player-cell">' + avatarHtml + '<span style="font-weight:600;">' + p.name + '</span></div></td>' +
           '<td>' + Number(p.transactions || 0).toLocaleString() + '</td>' +
           '<td style="color:var(--accent-amber);">' + formatMoney(p.spent) + '</td>' +
           '<td style="color:var(--accent-emerald);">' + formatMoney(p.earned) + '</td>' +
@@ -1068,16 +1645,298 @@ function renderDashboardHtml(initialId, origin) {
       tbody.innerHTML = logs.map(l => {
         const time = new Date(l.timestamp).toLocaleTimeString();
         const tag = l.type === 'BUY' ? '<span class="tag-buy">BUY</span>' : '<span class="tag-sell">SELL</span>';
+        const imgHtml = getItemImgHtml(l.itemId, 24);
+        const avatarHtml = getPlayerAvatarHtml(l.playerId, l.playerName, 24);
+
         return '<tr>' +
           '<td style="color:var(--text-dim);">' + time + '</td>' +
           '<td>' + tag + '</td>' +
-          '<td>' + l.playerName + '</td>' +
-          '<td style="font-weight:500;">' + l.itemId + '</td>' +
-          '<td>' + l.amount + '</td>' +
+          '<td><div class="player-cell" style="cursor:pointer;" onclick="openPlayerModal(\\'' + (l.playerId || l.playerName) + '\\')">' + avatarHtml + '<span>' + l.playerName + '</span></div></td>' +
+          '<td><div class="item-cell" style="cursor:pointer;" onclick="openItemModal(\\'' + l.itemId + '\\')">' + imgHtml + '<span>' + formatItemDisplayName(l.itemId) + '</span></div></td>' +
+          '<td>' + Number(l.amount || 0).toLocaleString() + '</td>' +
           '<td style="font-weight:600;">' + formatMoney(l.totalPrice) + '</td>' +
           '</tr>';
       }).join('');
     }
+
+    // Modal: Item Analytics Drill-Down
+    window.openItemModal = function(itemId) {
+      if (!reportData) return;
+      const allItems = reportData.items || reportData.topItems || [];
+      const item = allItems.find(it => it.itemId === itemId);
+      if (!item) return;
+
+      const raw = getItemRawName(itemId);
+      const title = formatItemDisplayName(itemId);
+
+      // Icon & Header
+      document.getElementById("itemModalIcon").innerHTML =
+        '<img class="pixelated" src="https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/' + raw + '.png" alt="" width="40" height="40" data-raw-name="' + raw + '" data-step="0" onerror="handleItemImgError(this)" />';
+      document.getElementById("itemModalTitle").textContent = title;
+      document.getElementById("itemModalSubtitle").textContent = itemId + ' • Category: ' + (item.categoryId || "general");
+
+      // KPIs
+      const gross = (item.soldMoney || 0) + (item.boughtMoney || 0);
+      const totalUnits = (item.soldUnits || 0) + (item.boughtUnits || 0);
+      document.getElementById("itemModalTurnover").textContent = formatMoney(gross);
+      document.getElementById("itemModalTotalUnits").textContent = Number(totalUnits).toLocaleString() + " units traded";
+
+      document.getElementById("itemModalSoldMoney").textContent = formatMoney(item.soldMoney || 0);
+      document.getElementById("itemModalSoldUnits").textContent = Number(item.soldUnits || 0).toLocaleString() + " sold to shop";
+
+      document.getElementById("itemModalBoughtMoney").textContent = formatMoney(item.boughtMoney || 0);
+      document.getElementById("itemModalBoughtUnits").textContent = Number(item.boughtUnits || 0).toLocaleString() + " bought by players";
+
+      const traders = Array.isArray(item.topTraders) ? item.topTraders : [];
+      document.getElementById("itemModalTx").textContent = Number(item.transactions || 0).toLocaleString();
+      document.getElementById("itemModalUniquePlayers").textContent = traders.length + " unique traders";
+
+      // Timeline Chart
+      const timeline = Array.isArray(item.timeline) ? item.timeline : [];
+      const tCtx = document.getElementById("itemModalTimelineChart").getContext("2d");
+      if (itemModalChartInstance) {
+        itemModalChartInstance.destroy();
+      }
+
+      itemModalChartInstance = new Chart(tCtx, {
+        type: 'line',
+        data: {
+          labels: timeline.map(t => t.date.slice(5)),
+          datasets: [
+            {
+              label: 'Player Purchases ($)',
+              data: timeline.map(t => t.buyMoney || 0),
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              fill: true,
+              tension: 0.35,
+            },
+            {
+              label: 'Player Sell Payouts ($)',
+              data: timeline.map(t => t.sellMoney || 0),
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.35,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => '$' + v } }
+          }
+        }
+      });
+
+      // Top Traders for this Item
+      const tradersTbody = document.getElementById("itemModalTradersBody");
+      if (traders.length === 0) {
+        tradersTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1rem;">No player trades recorded.</td></tr>';
+      } else {
+        tradersTbody.innerHTML = traders.slice(0, 15).map(tr => {
+          const avHtml = getPlayerAvatarHtml(tr.uuid, tr.name, 24);
+          return '<tr class="clickable-row" onclick="openPlayerModal(\\'' + (tr.uuid || tr.name) + '\\')">' +
+            '<td><div class="player-cell">' + avHtml + '<span style="font-weight:600;">' + tr.name + '</span></div></td>' +
+            '<td>' + Number(tr.boughtUnits || 0).toLocaleString() + '</td>' +
+            '<td style="color:var(--accent-amber);">' + formatMoney(tr.spent) + '</td>' +
+            '<td>' + Number(tr.soldUnits || 0).toLocaleString() + '</td>' +
+            '<td style="color:var(--accent-emerald);">' + formatMoney(tr.earned) + '</td>' +
+            '<td>' + Number(tr.transactions || 0).toLocaleString() + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      // Recent Transactions for this item
+      const itemLogs = (reportData.recentTransactions || []).filter(l => l.itemId === itemId);
+      const logsTbody = document.getElementById("itemModalLogsBody");
+      if (itemLogs.length === 0) {
+        logsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:1rem;">No recent transactions for this item.</td></tr>';
+      } else {
+        logsTbody.innerHTML = itemLogs.slice(0, 20).map(l => {
+          const time = new Date(l.timestamp).toLocaleTimeString();
+          const tag = l.type === 'BUY' ? '<span class="tag-buy">BUY</span>' : '<span class="tag-sell">SELL</span>';
+          return '<tr>' +
+            '<td style="color:var(--text-dim);">' + time + '</td>' +
+            '<td>' + tag + '</td>' +
+            '<td><span style="cursor:pointer; color:#818cf8;" onclick="openPlayerModal(\\'' + (l.playerId || l.playerName) + '\\')">' + l.playerName + '</span></td>' +
+            '<td>' + Number(l.amount || 0).toLocaleString() + '</td>' +
+            '<td style="font-weight:600;">' + formatMoney(l.totalPrice) + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      document.getElementById("itemModal").classList.add("show");
+    };
+
+    window.closeItemModal = function() {
+      document.getElementById("itemModal").classList.remove("show");
+      if (itemModalChartInstance) {
+        itemModalChartInstance.destroy();
+        itemModalChartInstance = null;
+      }
+    };
+
+    // Modal: Player Analytics Drill-Down
+    window.openPlayerModal = function(playerUuidOrName) {
+      if (!reportData) return;
+      const allPlayers = reportData.players || [];
+      const player = allPlayers.find(p => p.uuid === playerUuidOrName || p.name === playerUuidOrName);
+      if (!player) return;
+
+      // Icon & Header
+      document.getElementById("playerModalIcon").innerHTML = getPlayerAvatarHtml(player.uuid, player.name, 40);
+      document.getElementById("playerModalTitle").textContent = player.name;
+      document.getElementById("playerModalSubtitle").textContent = 'UUID: ' + (player.uuid || "N/A");
+
+      // KPIs
+      document.getElementById("playerModalSpent").textContent = formatMoney(player.spent || 0);
+      document.getElementById("playerModalEarned").textContent = formatMoney(player.earned || 0);
+      const net = (player.earned || 0) - (player.spent || 0);
+      const netElem = document.getElementById("playerModalNet");
+      netElem.textContent = (net >= 0 ? "+" : "") + formatMoney(net);
+      netElem.style.color = net >= 0 ? "var(--accent-emerald)" : "var(--accent-rose)";
+
+      const items = Array.isArray(player.topItems) ? player.topItems : [];
+      document.getElementById("playerModalTx").textContent = Number(player.transactions || 0).toLocaleString();
+      document.getElementById("playerModalTradedItemsCount").textContent = items.length + " unique items traded";
+
+      // Timeline Chart
+      const timeline = Array.isArray(player.timeline) ? player.timeline : [];
+      const tCtx = document.getElementById("playerModalTimelineChart").getContext("2d");
+      if (playerModalTimelineChartInstance) {
+        playerModalTimelineChartInstance.destroy();
+      }
+
+      playerModalTimelineChartInstance = new Chart(tCtx, {
+        type: 'line',
+        data: {
+          labels: timeline.map(t => t.date.slice(5)),
+          datasets: [
+            {
+              label: 'Spent ($)',
+              data: timeline.map(t => t.buyMoney || t.spent || 0),
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              fill: true,
+              tension: 0.35,
+            },
+            {
+              label: 'Earned ($)',
+              data: timeline.map(t => t.sellMoney || t.earned || 0),
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.35,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', callback: v => '$' + v } }
+          }
+        }
+      });
+
+      // Category Chart
+      const categories = Array.isArray(player.categories) ? player.categories : [];
+      const cCtx = document.getElementById("playerModalCategoryChart").getContext("2d");
+      if (playerModalCategoryChartInstance) {
+        playerModalCategoryChartInstance.destroy();
+      }
+
+      playerModalCategoryChartInstance = new Chart(cCtx, {
+        type: 'doughnut',
+        data: {
+          labels: categories.map(c => c.categoryId || "general"),
+          datasets: [{
+            data: categories.map(c => (c.spent || 0) + (c.earned || 0)),
+            backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } }
+        }
+      });
+
+      // Items Traded by Player
+      const itemsTbody = document.getElementById("playerModalItemsBody");
+      if (items.length === 0) {
+        itemsTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:1rem;">No item records found.</td></tr>';
+      } else {
+        itemsTbody.innerHTML = items.slice(0, 15).map(it => {
+          const imgHtml = getItemImgHtml(it.itemId, 24);
+          const name = formatItemDisplayName(it.itemId);
+          return '<tr class="clickable-row" onclick="openItemModal(\\'' + it.itemId + '\\')">' +
+            '<td><div class="item-cell">' + imgHtml + '<span>' + name + '</span></div></td>' +
+            '<td>' + Number(it.boughtUnits || 0).toLocaleString() + '</td>' +
+            '<td style="color:var(--accent-amber);">' + formatMoney(it.spent) + '</td>' +
+            '<td>' + Number(it.soldUnits || 0).toLocaleString() + '</td>' +
+            '<td style="color:var(--accent-emerald);">' + formatMoney(it.earned) + '</td>' +
+            '<td>' + Number(it.transactions || 0).toLocaleString() + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      // Recent Transactions for this player
+      const playerLogs = (reportData.recentTransactions || []).filter(l => l.playerId === player.uuid || l.playerName === player.name);
+      const logsTbody = document.getElementById("playerModalLogsBody");
+      if (playerLogs.length === 0) {
+        logsTbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:1rem;">No recent transactions for this player.</td></tr>';
+      } else {
+        logsTbody.innerHTML = playerLogs.slice(0, 20).map(l => {
+          const time = new Date(l.timestamp).toLocaleTimeString();
+          const tag = l.type === 'BUY' ? '<span class="tag-buy">BUY</span>' : '<span class="tag-sell">SELL</span>';
+          return '<tr>' +
+            '<td style="color:var(--text-dim);">' + time + '</td>' +
+            '<td>' + tag + '</td>' +
+            '<td><span style="cursor:pointer; color:#818cf8;" onclick="openItemModal(\\'' + l.itemId + '\\')">' + formatItemDisplayName(l.itemId) + '</span></td>' +
+            '<td>' + Number(l.amount || 0).toLocaleString() + '</td>' +
+            '<td style="font-weight:600;">' + formatMoney(l.totalPrice) + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+
+      document.getElementById("playerModal").classList.add("show");
+    };
+
+    window.closePlayerModal = function() {
+      document.getElementById("playerModal").classList.remove("show");
+      if (playerModalTimelineChartInstance) {
+        playerModalTimelineChartInstance.destroy();
+        playerModalTimelineChartInstance = null;
+      }
+      if (playerModalCategoryChartInstance) {
+        playerModalCategoryChartInstance.destroy();
+        playerModalCategoryChartInstance = null;
+      }
+    };
+
+    // Close modals on ESC or backdrop click
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeItemModal();
+        closePlayerModal();
+      }
+    });
+
+    document.getElementById("itemModal").addEventListener("click", (e) => {
+      if (e.target.id === "itemModal") closeItemModal();
+    });
+
+    document.getElementById("playerModal").addEventListener("click", (e) => {
+      if (e.target.id === "playerModal") closePlayerModal();
+    });
 
     // Tabs switching
     document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -1086,6 +1945,10 @@ function renderDashboardHtml(initialId, origin) {
         document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
         btn.classList.add("active");
         document.getElementById(btn.dataset.tab).style.display = "block";
+
+        // Toggle filter dropdown visibility
+        document.getElementById("playerFilterContainer").style.display = btn.dataset.tab === "tabItems" ? "flex" : "none";
+        document.getElementById("itemFilterContainer").style.display = btn.dataset.tab === "tabPlayers" ? "flex" : "none";
       });
     });
 

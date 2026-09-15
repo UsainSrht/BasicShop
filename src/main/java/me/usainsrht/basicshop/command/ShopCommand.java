@@ -366,7 +366,7 @@ public final class ShopCommand {
                 if (result.success()) {
                     configManager.getMessagesConfig().send(sender, "analytics-upload-success",
                             Placeholder.parsed("url", result.url()),
-                            Placeholder.unparsed("expiration", String.valueOf(result.expirationDays())));
+                            Placeholder.unparsed("expiration", String.valueOf(result.expirationHours())));
                 } else {
                     configManager.getMessagesConfig().send(sender, "analytics-upload-failed",
                             Placeholder.unparsed("reason", result.error() != null ? result.error() : "Unknown error"));

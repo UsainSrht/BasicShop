@@ -32,7 +32,11 @@ public final class MainConfig {
     }
 
     public record TopSellersSettings(int amount, int days, int updateIntervalMinutes, String defaultView) {}
-    public record WebAnalyticsSettings(String uploadUrl, String secretToken, int expirationDays) {}
+    public record WebAnalyticsSettings(String uploadUrl, String secretToken, int expirationHours) {
+        public int expirationDays() {
+            return (int) Math.ceil(expirationHours / 24.0);
+        }
+    }
     public record AnalyticsSettings(boolean enabled, TopSellersSettings topSellers, WebAnalyticsSettings web) {}
 
     /**
@@ -202,8 +206,15 @@ public final class MainConfig {
         ConfigurationSection webSec = sec != null ? sec.getConfigurationSection("web") : null;
         String uploadUrl = webSec != null ? webSec.getString("upload-url", "") : "";
         String secretToken = webSec != null ? webSec.getString("secret-token", "") : "";
-        int expDays = webSec != null ? Math.max(1, webSec.getInt("expiration-days", 3)) : 3;
-        WebAnalyticsSettings webSettings = new WebAnalyticsSettings(uploadUrl, secretToken, expDays);
+        int expHours = 1;
+        if (webSec != null) {
+            if (webSec.contains("expiration-hours")) {
+                expHours = Math.max(1, webSec.getInt("expiration-hours", 1));
+            } else if (webSec.contains("expiration-days")) {
+                expHours = Math.max(1, webSec.getInt("expiration-days", 1) * 24);
+            }
+        }
+        WebAnalyticsSettings webSettings = new WebAnalyticsSettings(uploadUrl, secretToken, expHours);
 
         return new AnalyticsSettings(enabled, topSettings, webSettings);
     }

@@ -1,6 +1,7 @@
 {
   "name": "basicshop-analytics",
   "version": "1.0.0",
+  "type": "module",
   "description": "Cloudflare Worker & Web Analytics Dashboard for BasicShop Minecraft plugin",
   "main": "src/index.js",
   "scripts": {

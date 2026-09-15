@@ -25,7 +25,13 @@ public final class MessagesConfig {
         for (String key : cfg.getKeys(false)) {
             if ("prefix".equalsIgnoreCase(key)) continue;
             Object raw = cfg.get(key);
-            if (raw != null) {
+            if (raw == null) {
+                msgs.put(key, YamlMessage.empty());
+            } else if (raw instanceof String str && str.isEmpty()) {
+                msgs.put(key, YamlMessage.empty());
+            } else if (raw instanceof java.util.List<?> list && (list.isEmpty() || list.stream().allMatch(o -> o == null || (o instanceof String s && s.isEmpty())))) {
+                msgs.put(key, YamlMessage.empty());
+            } else {
                 msgs.put(key, YamlMessage.parse(raw));
             }
         }
@@ -42,21 +48,37 @@ public final class MessagesConfig {
 
     public void send(CommandSender sender, String key, TagResolver... resolvers) {
         if (sender == null) return;
-        getMessage(key).send(sender, prefix, resolvers);
+        YamlMessage msg = getMessage(key);
+        if (msg.isEmpty()) return;
+        if (msg.chat() != null && msg.chat().size() == 1 && msg.chat().get(0).isBlank()) {
+            msg.send(sender, resolvers);
+            return;
+        }
+        msg.send(sender, prefix, resolvers);
     }
 
     public void sendRaw(CommandSender sender, String key, TagResolver... resolvers) {
         if (sender == null) return;
-        getMessage(key).send(sender, resolvers);
+        YamlMessage msg = getMessage(key);
+        if (msg.isEmpty()) return;
+        msg.send(sender, resolvers);
     }
 
     public void sendOffline(OfflinePlayer player, String key, TagResolver... resolvers) {
         if (player == null) return;
-        getMessage(key).send(player, prefix, resolvers);
+        YamlMessage msg = getMessage(key);
+        if (msg.isEmpty()) return;
+        if (msg.chat() != null && msg.chat().size() == 1 && msg.chat().get(0).isBlank()) {
+            msg.send(player, resolvers);
+            return;
+        }
+        msg.send(player, prefix, resolvers);
     }
 
     public void sendOfflineRaw(OfflinePlayer player, String key, TagResolver... resolvers) {
         if (player == null) return;
-        getMessage(key).send(player, resolvers);
+        YamlMessage msg = getMessage(key);
+        if (msg.isEmpty()) return;
+        msg.send(player, resolvers);
     }
 }

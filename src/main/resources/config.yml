@@ -164,5 +164,6 @@ analytics:
     upload-url: "https://basicshop.usainsrht.workers.dev"
     # Secret Bearer token (leave empty for public instance; only set if self-hosting a private instance)
     secret-token: ""
-    # Expiration in days for temporary report links (1 to 7 days, default: 3)
-    expiration-days: 3
+    # Expiration in hours for temporary report links (default: 1 hour)
+    # Reports are automatically deleted from Cloudflare KV after this duration
+    expiration-hours: 1
