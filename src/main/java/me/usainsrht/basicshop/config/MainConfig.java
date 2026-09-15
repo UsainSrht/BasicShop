@@ -31,6 +31,10 @@ public final class MainConfig {
         }
     }
 
+    public record TopSellersSettings(int amount, int days, int updateIntervalMinutes, String defaultView) {}
+    public record WebAnalyticsSettings(String uploadUrl, String secretToken, int expirationDays) {}
+    public record AnalyticsSettings(boolean enabled, TopSellersSettings topSellers, WebAnalyticsSettings web) {}
+
     /**
      * Holds the configured root command name, its aliases, and all sub-command names.
      *
@@ -66,6 +70,9 @@ public final class MainConfig {
 
     // Command names
     private final CommandsConfig commandsConfig;
+
+    // Analytics settings
+    private final AnalyticsSettings analyticsSettings;
 
     public MainConfig(FileConfiguration cfg) {
         this.buyingEnabled       = cfg.getBoolean("global.buying-enabled",      true);
@@ -115,6 +122,9 @@ public final class MainConfig {
 
         ConfigurationSection cmdSec = cfg.getConfigurationSection("commands");
         this.commandsConfig = parseCommandsConfig(cmdSec);
+
+        ConfigurationSection analyticsSec = cfg.getConfigurationSection("analytics");
+        this.analyticsSettings = parseAnalyticsSettings(analyticsSec);
     }
 
     private static CategoryGuiConfig parseCategoryGuiConfig(ConfigurationSection sec) {
@@ -168,6 +178,8 @@ public final class MainConfig {
         subs.put("quicksell-hand",      "hand");
         subs.put("quicksell-inventory", "inventory");
         subs.put("give",                "give");
+        subs.put("top",                 "top");
+        subs.put("admin",               "admin");
         if (subSec != null) {
             for (String key : subs.keySet()) {
                 String val = subSec.getString(key);
@@ -175,6 +187,25 @@ public final class MainConfig {
             }
         }
         return new CommandsConfig(root, Collections.unmodifiableList(aliases), Collections.unmodifiableMap(subs), Collections.unmodifiableList(quicksellAliases));
+    }
+
+    private static AnalyticsSettings parseAnalyticsSettings(ConfigurationSection sec) {
+        boolean enabled = sec == null || sec.getBoolean("enabled", true);
+
+        ConfigurationSection topSec = sec != null ? sec.getConfigurationSection("top-sellers") : null;
+        int amount = topSec != null ? Math.max(1, topSec.getInt("amount", 10)) : 10;
+        int days = topSec != null ? Math.max(1, topSec.getInt("days", 7)) : 7;
+        int interval = topSec != null ? Math.max(1, topSec.getInt("update-interval-minutes", 60)) : 60;
+        String view = topSec != null ? topSec.getString("default-view", "chat") : "chat";
+        TopSellersSettings topSettings = new TopSellersSettings(amount, days, interval, view);
+
+        ConfigurationSection webSec = sec != null ? sec.getConfigurationSection("web") : null;
+        String uploadUrl = webSec != null ? webSec.getString("upload-url", "") : "";
+        String secretToken = webSec != null ? webSec.getString("secret-token", "") : "";
+        int expDays = webSec != null ? Math.max(1, webSec.getInt("expiration-days", 3)) : 3;
+        WebAnalyticsSettings webSettings = new WebAnalyticsSettings(uploadUrl, secretToken, expDays);
+
+        return new AnalyticsSettings(enabled, topSettings, webSettings);
     }
 
     public boolean isBuyingEnabled()     { return buyingEnabled; }
@@ -195,4 +226,5 @@ public final class MainConfig {
     public Map<ClickType, ClickAction> getClickActions()         { return clickActions; }
     public CategoryGuiConfig getCategoryGuiConfig()               { return categoryGuiConfig; }
     public CommandsConfig getCommandsConfig()                     { return commandsConfig; }
+    public AnalyticsSettings getAnalyticsSettings()               { return analyticsSettings; }
 }

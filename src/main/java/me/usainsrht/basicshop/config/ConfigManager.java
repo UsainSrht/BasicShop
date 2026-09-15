@@ -34,6 +34,7 @@ public final class ConfigManager {
     private ToolsConfig      toolsConfig;
     private CategoriesConfig categoriesConfig;
     private QuickSellConfig  quickSellConfig;
+    private TopSellersConfig topSellersConfig;
     private List<ShopCategory> categories;
 
     public ConfigManager(Plugin plugin) {
@@ -51,6 +52,7 @@ public final class ConfigManager {
             saveDefault("messages.yml");
             saveDefault("categories.yml");
             saveDefault("quicksell.yml");
+            saveDefault("topsellers.yml");
             saveDefaultCategories();
         } catch (Throwable t) {
             plugin.getLogger().log(Level.SEVERE, "Could not save default configuration files!", t);
@@ -98,6 +100,16 @@ public final class ConfigManager {
             plugin.getLogger().log(Level.SEVERE, "Could not load quicksell.yml!", t);
             if (this.quickSellConfig == null) {
                 this.quickSellConfig = new QuickSellConfig(new YamlConfiguration());
+            }
+        }
+
+        try {
+            FileConfiguration topSellersCfg = loadYml("topsellers.yml");
+            this.topSellersConfig = new TopSellersConfig(topSellersCfg);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.SEVERE, "Could not load topsellers.yml!", t);
+            if (this.topSellersConfig == null) {
+                this.topSellersConfig = new TopSellersConfig(new YamlConfiguration());
             }
         }
 
@@ -298,6 +310,13 @@ public final class ConfigManager {
             quickSellConfig = new QuickSellConfig(new YamlConfiguration());
         }
         return quickSellConfig;
+    }
+
+    public TopSellersConfig getTopSellersConfig() {
+        if (topSellersConfig == null) {
+            topSellersConfig = new TopSellersConfig(new YamlConfiguration());
+        }
+        return topSellersConfig;
     }
 
     public List<ShopCategory> getCategories() {

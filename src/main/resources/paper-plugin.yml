@@ -13,10 +13,22 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    MiniPlaceholders:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 permissions:
   basicshop.use:
     description: Allows the player to open the shop
+    default: true
+
+  basicshop.top:
+    description: Allows the player to view the top selling items
     default: true
 
   basicshop.buy:
@@ -47,6 +59,14 @@ permissions:
     description: Allows giving shop tools to players
     default: op
 
+  basicshop.admin.analytics:
+    description: Allows viewing and uploading shop analytics
+    default: op
+
+  basicshop.admin.logs:
+    description: Allows viewing shop transaction logs
+    default: op
+
   basicshop.tools.staff:
     description: Allows using the Money Staff
     default: true
@@ -65,4 +85,6 @@ permissions:
     children:
       basicshop.admin.reload: true
       basicshop.admin.give: true
+      basicshop.admin.analytics: true
+      basicshop.admin.logs: true
 

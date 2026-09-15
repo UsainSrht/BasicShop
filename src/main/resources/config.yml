@@ -19,6 +19,8 @@ commands:
     quicksell-hand: hand
     quicksell-inventory: inventory
     give: give
+    top: top
+    admin: admin
 
 # Shop tools — custom sell items given via /shop give
 tools:
@@ -139,3 +141,28 @@ item-display:
     - "<if_sell><dark_gray>Right click <white>Sell 1"
     - "<if_sell><dark_gray>Shift right click <white>Sell 64"
     - "<if_sell><dark_gray><key:key.drop> <white>Sell All"
+
+# Analytics and Popular Items Configuration
+analytics:
+  # Enable transaction logging and analytics engine
+  enabled: true
+  # In-game popular items (top sellers)
+  top-sellers:
+    # Amount of top profitable items to rank (default: 10)
+    amount: 10
+    # Rolling window of days to look back for calculation (default: 7)
+    days: 7
+    # Recalculation interval in minutes (default: 60 = 1 hour)
+    update-interval-minutes: 60
+    # Default view for /shop top: "chat" or "gui"
+    default-view: "chat"
+  # Web Analytics Dashboard (Powered by Cloudflare Worker)
+  # Plug-and-play out of the box like Spark (spark.lucko.me) or mclo.gs!
+  web:
+    # URL of the Cloudflare Worker service
+    # Points to the official instance by default (or your custom worker URL if self-hosting)
+    upload-url: "https://basicshop.usainsrht.workers.dev"
+    # Secret Bearer token (leave empty for public instance; only set if self-hosting a private instance)
+    secret-token: ""
+    # Expiration in days for temporary report links (1 to 7 days, default: 3)
+    expiration-days: 3

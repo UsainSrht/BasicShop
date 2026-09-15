@@ -1,5 +1,7 @@
 package me.usainsrht.basicshop.gui;
 
+import me.usainsrht.basicshop.BasicShop;
+import me.usainsrht.basicshop.analytics.TopSellersEngine;
 import me.usainsrht.basicshop.api.ShopAPI;
 import me.usainsrht.basicshop.api.event.ShopOpenEvent;
 import me.usainsrht.basicshop.api.event.ShopViewType;
@@ -37,6 +39,11 @@ public final class CategoriesGui extends AbstractShopGui {
         build();
     }
 
+    /** Kept for call-sites that already hold the engine — engine is ignored, fetched lazily on click. */
+    public CategoriesGui(ConfigManager configManager, ShopAPI shopAPI, MorePaperLib morePaperLib, TopSellersEngine ignored, Player viewer) {
+        this(configManager, shopAPI, morePaperLib, viewer);
+    }
+
     private void build() {
         CategoriesConfig cfg = configManager.getCategoriesConfig();
 
@@ -62,6 +69,18 @@ public final class CategoriesGui extends AbstractShopGui {
             inventory.setItem(qsSlot, qsIcon);
         }
 
+        // Place Top Sellers button if slot is valid (engine loaded async when clicked)
+        int tsSlot = cfg.getTopSellersSlot();
+        if (tsSlot > 0) tsSlot = Math.min(tsSlot, inventory.getSize() - 1); // clamp to last valid slot
+        if (tsSlot >= 0) {
+            ItemStack tsIcon = buildItem(
+                    cfg.getTopSellersMaterial(),
+                    cfg.getTopSellersName(),
+                    cfg.getTopSellersLore()
+            );
+            inventory.setItem(tsSlot, tsIcon);
+        }
+
         // Fill empty slots with filler
         if (cfg.isFillerEnabled()) {
             fillEmpty(cfg.getFillerMaterial(), cfg.getFillerName(), cfg.isFillerHideTooltip());
@@ -78,6 +97,19 @@ public final class CategoriesGui extends AbstractShopGui {
         // QuickSell slot
         if (slot == cfg.getQuicksellSlot()) {
             handleQuickSellSlot(player, event);
+            return;
+        }
+
+        // Top Sellers slot — fetch engine from plugin lazily
+        if (slot == tsSlotForClick(cfg)) {
+            TopSellersEngine engine = resolveEngine();
+            if (engine != null) {
+                ShopSounds.play(player, configManager.getMessagesConfig(), "gui-click-sound");
+                morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+                    TopSellersGui topGui = new TopSellersGui(configManager, shopAPI, morePaperLib, engine, player);
+                    player.openInventory(topGui.getInventory());
+                }, null);
+            }
             return;
         }
 
@@ -157,6 +189,20 @@ public final class CategoriesGui extends AbstractShopGui {
 
         CategoryGui categoryGui = new CategoryGui(configManager, shopAPI, morePaperLib, player, category, 0);
         player.openInventory(categoryGui.getInventory());
+    }
+
+    /** Returns the effective ts slot clamped to inventory bounds (mirrors build() logic). */
+    private int tsSlotForClick(CategoriesConfig cfg) {
+        int s = cfg.getTopSellersSlot();
+        if (s > 0) s = Math.min(s, inventory.getSize() - 1);
+        return s;
+    }
+
+    /** Fetches TopSellersEngine from the plugin instance — avoids storing it in the GUI. */
+    private TopSellersEngine resolveEngine() {
+        var plugin = Bukkit.getPluginManager().getPlugin("BasicShop");
+        if (plugin instanceof BasicShop bs) return bs.getTopSellersEngine();
+        return null;
     }
 
     private void sendMessage(Player player, String key) {

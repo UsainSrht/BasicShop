@@ -1,0 +1,60 @@
+# Top Sellers GUI configuration
+# Displays the most popular and profited items sold to the shop
+gui:
+  title: "<shadow:#000000FF><gold><bold>Top Sellers</bold></gold></shadow> <gray>(Last <days> Days)</gray>"
+  rows: 4
+
+  back-button:
+    slot: 31
+    material: BARRIER
+    name: "<gray>\u2717 Back to Categories"
+    # When true, clicking this button opens the main categories GUI
+    return-to-categories: true
+
+  # Filler for empty slots
+  filler:
+    enabled: true
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+    hide-tooltip: true
+
+  # Item slots in order of rank (#1, #2, #3, ...)
+  item-slots:
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 19
+    - 20
+    - 21
+    - 22
+    - 23
+
+  # Shown when no sales have been recorded in the configured days
+  empty-slot: 13
+  empty-item:
+    material: BARRIER
+    name: "<red>No sales recorded."
+    lore:
+      - "<gray>No items have been sold"
+      - "<gray>in the last <days> days."
+
+# Display name for top items.
+# Use <item> for the item's translatable in-game name.
+item-name: "<gold>#<rank></gold> <yellow><item></yellow>"
+
+# Lore template for each top item slot.
+# Placeholders:
+#   <rank>         — Rank number (1, 2, 3...)
+#   <amount>       — Total units sold to the shop
+#   <total_profit> — Total money paid out to players
+#   <sell_price>   — Per-unit sell price configured in shop
+#   <category>     — Category display name / ID
+item-lore:
+  - "<gray>Rank: <gold>#<rank></gold>"
+  - "<gray>Units Sold: <white><amount></white>"
+  - "<gray>Total Profit: <green><total_profit></green>"
+  - "<gray>Unit Price: <gold><sell_price></gold>"
+  - ""
+  - "<yellow>Click to view category."

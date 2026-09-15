@@ -43,6 +43,9 @@ public final class BasicShop extends JavaPlugin {
     private TransactionLogger transactionLogger;
     private ShopAPIImpl shopAPI;
     private ShopToolFactory toolFactory;
+    private me.usainsrht.basicshop.analytics.TopSellersEngine topSellersEngine;
+    private me.usainsrht.basicshop.analytics.AnalyticsWebUploader webUploader;
+    private me.usainsrht.basicshop.hook.HookManager hookManager;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -78,6 +81,15 @@ public final class BasicShop extends JavaPlugin {
         shopAPI = new ShopAPIImpl(configManager, economyProvider, analyticsManager, transactionLogger);
         toolFactory = new ShopToolFactory(this, configManager);
 
+        // 5.5 Top Sellers & Web Analytics Engine
+        topSellersEngine = new me.usainsrht.basicshop.analytics.TopSellersEngine(this, configManager, shopAPI, morePaperLib);
+        topSellersEngine.start();
+        webUploader = new me.usainsrht.basicshop.analytics.AnalyticsWebUploader(this, configManager, topSellersEngine);
+
+        // 5.6 External Hooks (PlaceholderAPI & MiniPlaceholders)
+        hookManager = new me.usainsrht.basicshop.hook.HookManager(this, configManager, topSellersEngine);
+        hookManager.registerHooks();
+
         // 6. Listeners
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
         getServer().getPluginManager().registerEvents(
@@ -86,7 +98,7 @@ public final class BasicShop extends JavaPlugin {
         );
 
         // 7. Commands (lifecycle — must be called before onEnable returns for COMMANDS event)
-        new ShopCommand(this, configManager, shopAPI, toolFactory, morePaperLib).register();
+        new ShopCommand(this, configManager, shopAPI, toolFactory, morePaperLib, topSellersEngine, webUploader).register();
 
         // 8. bStats
         initMetrics();
@@ -97,7 +109,13 @@ public final class BasicShop extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Flush analytics and stop scheduled tasks
+        // Unregister hooks and stop scheduled tasks
+        if (hookManager != null) {
+            hookManager.unregisterHooks();
+        }
+        if (topSellersEngine != null) {
+            topSellersEngine.stop();
+        }
         if (transactionLogger != null) {
             transactionLogger.stop();
         }
@@ -142,4 +160,13 @@ public final class BasicShop extends JavaPlugin {
     public MorePaperLib getMorePaperLib() {
         return morePaperLib;
     }
+
+    public me.usainsrht.basicshop.analytics.TopSellersEngine getTopSellersEngine() {
+        return topSellersEngine;
+    }
+
+    public me.usainsrht.basicshop.analytics.AnalyticsWebUploader getWebUploader() {
+        return webUploader;
+    }
 }
+

@@ -1,0 +1,12 @@
+name = "basicshop"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+# KV Namespace binding for storing temporary analytics payloads
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "64826ea2ea844f2ba36baf24dc1137b1"
+
+# [vars]
+# Optional: Set UPLOAD_TOKEN only if you want to restrict uploads with a password (private mode).
+# By default, UPLOAD_TOKEN is omitted to allow public plug-and-play uploads (like spark / mclo.gs).

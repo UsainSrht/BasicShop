@@ -22,6 +22,15 @@ gui:
       - "<gray>Click with an empty hand to open"
       - "<gray>the Quick Sell inventory browser."
 
+  top-sellers-button:
+    # Slot (0-indexed) in the Categories GUI (-1 to disable)
+    slot: -1
+    material: NETHER_STAR
+    name: "<gold><bold>Top Sellers</bold></gold>"
+    lore:
+      - "<gray>View the most profitable and"
+      - "<gray>popular items sold in the shop."
+
 # Categories to display in the GUI.
 # Each key is the category id and must match a file in the categories/ folder.
 categories:

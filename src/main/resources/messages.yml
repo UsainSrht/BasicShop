@@ -38,6 +38,28 @@ vault-unavailable: "<red>Economy provider is unavailable. Please contact an admi
 
 unknown-item: "<red>That item is not configured in the shop."
 
+# Top sellers command
+top-sellers-header: "<dark_gray>------- <gold><bold>Top Selling Items</bold></gold> <gray>(Last <days> Days)</gray> -------"
+top-sellers-format: "<gold>#<rank></gold> <white><item></white> <dark_gray>—</dark_gray> <green><total_profit></green> <gray>(<amount> sold)</gray>"
+top-sellers-footer: "<dark_gray>----------------------------------------"
+top-sellers-empty: "<gray>No items have been sold in the last <days> days."
+
+# Admin analytics
+analytics-uploading: "<yellow>Preparing and uploading analytics for the last <days> days to Cloudflare...</yellow>"
+analytics-upload-success: "<green>Analytics successfully uploaded!</green><newline><gray>Dashboard Link: </gray><hover:show_text:'<gray>Click to open web analytics dashboard'><click:open_url:'<url>'><underlined><gold>[Click to View Web Analytics]</gold></underlined></click></hover><newline><dark_gray>(This report expires in <expiration> days)</dark_gray>"
+analytics-upload-failed: "<red>Failed to upload analytics: <white><reason></white>"
+analytics-not-configured: "<red>Web analytics is not configured. Please set <white>upload-url</white> in config.yml."
+analytics-ingame-header: "<dark_gray>======= <gold><bold>Shop Analytics</bold></gold> <gray>(Last <days> Days)</gray> ======="
+analytics-ingame-summary: "<gray>Transactions: <white><transactions></white> | Volume: <white><units></white> items<newline><gray>Player Sell Payouts: <green><total_sold></green><newline><gray>Player Purchases: <gold><total_bought></gold><newline><gray>Net Economy Delta: <net_delta>"
+analytics-ingame-footer: "<dark_gray>=========================================="
+
+# Admin transaction logs
+logs-header: "<dark_gray>------- <gold>Transaction Logs</gold> <gray>(<date>)</gray> -------"
+logs-line: "<dark_gray>[<gray><time></gray>]</dark_gray> <action> <white><amount>x <item></white> <dark_gray>—</dark_gray> <gold><price></gold> <dark_gray>(<gray><player></gray>)</dark_gray>"
+logs-summary: "<gray>Total: <gold><count></gold> transactions <dark_gray>•</dark_gray> <gray>Sold: <green><total_sold></green></gray> <dark_gray>•</dark_gray> <gray>Bought: <gold><total_bought></gold></gray>"
+logs-empty: "<yellow>No transaction logs found for date <white><date></white>."
+logs-invalid-date: "<red>Invalid date '<white><date></white>'. Use YYYY-MM-DD, 'today', or 'yesterday'."
+
 # GUI and transaction sound-only messages using Minecraft namespaces
 open-category-sound:
   sound: "ui.button.click,1.0,1.2"

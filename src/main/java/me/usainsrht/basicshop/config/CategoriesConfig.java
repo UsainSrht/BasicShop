@@ -24,6 +24,7 @@ public final class CategoriesConfig {
     private final String guiTitle;
     private final int guiRows;
     private final int quicksellSlot;
+    private final int topSellersSlot;
     private final boolean fillerEnabled;
     private final Material fillerMaterial;
     private final String fillerName;
@@ -31,12 +32,15 @@ public final class CategoriesConfig {
     private final Material quicksellMaterial;
     private final String quicksellName;
     private final List<String> quicksellLore;
+    private final Material topSellersMaterial;
+    private final String topSellersName;
+    private final List<String> topSellersLore;
     private final List<CategoryEntry> categories;
 
     public CategoriesConfig(FileConfiguration cfg) {
-        this.guiTitle      = cfg.getString("gui.title", "<gold><bold>Shop</bold></gold>");
-        this.guiRows       = cfg.getInt("gui.rows", 6);
-        this.quicksellSlot = cfg.getInt("gui.quicksell-slot", 49);
+        this.guiTitle        = cfg.getString("gui.title", "<gold><bold>Shop</bold></gold>");
+        this.guiRows         = cfg.getInt("gui.rows", 6);
+        this.quicksellSlot   = cfg.getInt("gui.quicksell-slot", 49);
 
         ConfigurationSection filler = cfg.getConfigurationSection("gui.filler");
         if (filler != null) {
@@ -60,6 +64,19 @@ public final class CategoriesConfig {
             this.quicksellMaterial = Material.HOPPER;
             this.quicksellName     = "<yellow>Quick Sell";
             this.quicksellLore     = Collections.emptyList();
+        }
+
+        ConfigurationSection ts = cfg.getConfigurationSection("gui.top-sellers-button");
+        if (ts != null) {
+            this.topSellersSlot     = ts.getInt("slot", cfg.getInt("gui.top-sellers-slot", -1));
+            this.topSellersMaterial = parseMaterial(ts.getString("material"), Material.NETHER_STAR);
+            this.topSellersName     = ts.getString("name", "<gold>Top Sellers");
+            this.topSellersLore     = ts.getStringList("lore");
+        } else {
+            this.topSellersSlot     = cfg.getInt("gui.top-sellers-slot", -1);
+            this.topSellersMaterial = Material.NETHER_STAR;
+            this.topSellersName     = "<gold>Top Sellers";
+            this.topSellersLore     = Collections.emptyList();
         }
 
         List<CategoryEntry> cats = new ArrayList<>();
@@ -87,6 +104,7 @@ public final class CategoriesConfig {
     public String getGuiTitle() { return guiTitle; }
     public int getGuiRows()     { return guiRows; }
     public int getQuicksellSlot() { return quicksellSlot; }
+    public int getTopSellersSlot() { return topSellersSlot; }
     public boolean isFillerEnabled()        { return fillerEnabled; }
     public Material getFillerMaterial()      { return fillerMaterial; }
     public String getFillerName()            { return fillerName; }
@@ -94,5 +112,9 @@ public final class CategoriesConfig {
     public Material getQuicksellMaterial()   { return quicksellMaterial; }
     public String getQuicksellName()       { return quicksellName; }
     public List<String> getQuicksellLore() { return quicksellLore; }
+    public Material getTopSellersMaterial() { return topSellersMaterial; }
+    public String getTopSellersName()      { return topSellersName; }
+    public List<String> getTopSellersLore() { return topSellersLore; }
     public List<CategoryEntry> getCategories() { return categories; }
 }
+

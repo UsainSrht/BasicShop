@@ -1,1 +1,13 @@
-/target
+# Maven build outputs
+target/
+dependency-reduced-pom.xml
+
+# IDE / Editor configuration
+.idea/
+*.iml
+.vscode/
+
+# Node / Cloudflare Workers
+node_modules/
+.wrangler/
+.env
