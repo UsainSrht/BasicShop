@@ -65,8 +65,7 @@ public final class ShopCommand {
             ConfigManager configManager,
             ShopAPI shopAPI,
             ShopToolFactory toolFactory,
-            MorePaperLib morePaperLib
-    ) {
+            MorePaperLib morePaperLib) {
         this(plugin, configManager, shopAPI, toolFactory, morePaperLib, null, null);
     }
 
@@ -77,15 +76,14 @@ public final class ShopCommand {
             ShopToolFactory toolFactory,
             MorePaperLib morePaperLib,
             TopSellersEngine topSellersEngine,
-            AnalyticsWebUploader webUploader
-    ) {
-        this.plugin           = plugin;
-        this.configManager    = configManager;
-        this.shopAPI          = shopAPI;
-        this.toolFactory      = toolFactory;
-        this.morePaperLib     = morePaperLib;
+            AnalyticsWebUploader webUploader) {
+        this.plugin = plugin;
+        this.configManager = configManager;
+        this.shopAPI = shopAPI;
+        this.toolFactory = toolFactory;
+        this.morePaperLib = morePaperLib;
         this.topSellersEngine = topSellersEngine;
-        this.webUploader      = webUploader;
+        this.webUploader = webUploader;
     }
 
     /**
@@ -99,13 +97,11 @@ public final class ShopCommand {
             commands.register(
                     buildCommandTree(cmdCfg),
                     "BasicShop main command.",
-                    cmdCfg.aliases()
-            );
+                    cmdCfg.aliases());
             commands.register(
                     buildQuickSellNode(cmdCfg).build(),
                     "BasicShop quicksell command.",
-                    cmdCfg.quicksellAliases()
-            );
+                    cmdCfg.quicksellAliases());
         });
     }
 
@@ -113,7 +109,8 @@ public final class ShopCommand {
     // Command tree
     // -------------------------------------------------------------------------
 
-    private com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> buildCommandTree(MainConfig.CommandsConfig cmdCfg) {
+    private com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> buildCommandTree(
+            MainConfig.CommandsConfig cmdCfg) {
         return Commands.literal(cmdCfg.root())
                 .executes(ctx -> {
                     if (!(ctx.getSource().getSender() instanceof Player player)) {
@@ -128,6 +125,7 @@ public final class ShopCommand {
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(Commands.literal(cmdCfg.sub("help"))
+                        .requires(src -> src.getSender().hasPermission("basicshop.help"))
                         .executes(ctx -> {
                             if (!(ctx.getSource().getSender() instanceof Player player)) {
                                 sendMessage(ctx.getSource().getSender(), "player-only");
@@ -171,7 +169,8 @@ public final class ShopCommand {
 
     private LiteralArgumentBuilder<CommandSourceStack> buildTopNode(MainConfig.CommandsConfig cmdCfg) {
         return Commands.literal(cmdCfg.sub("top"))
-                .requires(src -> src.getSender().hasPermission("basicshop.top") || src.getSender().hasPermission("basicshop.use"))
+                .requires(src -> src.getSender().hasPermission("basicshop.top")
+                        || src.getSender().hasPermission("basicshop.use"))
                 .executes(ctx -> {
                     String defView = configManager.getMainConfig().getAnalyticsSettings().topSellers().defaultView();
                     if ("gui".equalsIgnoreCase(defView) && ctx.getSource().getSender() instanceof Player player) {
@@ -201,7 +200,8 @@ public final class ShopCommand {
         return Commands.literal(cmdCfg.sub("admin"))
                 .requires(src -> src.getSender().hasPermission("basicshop.admin"))
                 .then(Commands.literal("analytics")
-                        .requires(src -> src.getSender().hasPermission("basicshop.admin.analytics") || src.getSender().hasPermission("basicshop.admin"))
+                        .requires(src -> src.getSender().hasPermission("basicshop.admin.analytics")
+                                || src.getSender().hasPermission("basicshop.admin"))
                         .then(Commands.argument("mode", StringArgumentType.word())
                                 .suggests((ctx, builder) -> {
                                     builder.suggest("web");
@@ -210,9 +210,11 @@ public final class ShopCommand {
                                 })
                                 .executes(ctx -> executeAdminAnalytics(ctx, 7))
                                 .then(Commands.argument("days", IntegerArgumentType.integer(1, 365))
-                                        .executes(ctx -> executeAdminAnalytics(ctx, IntegerArgumentType.getInteger(ctx, "days"))))))
+                                        .executes(ctx -> executeAdminAnalytics(ctx,
+                                                IntegerArgumentType.getInteger(ctx, "days"))))))
                 .then(Commands.literal("logs")
-                        .requires(src -> src.getSender().hasPermission("basicshop.admin.logs") || src.getSender().hasPermission("basicshop.admin"))
+                        .requires(src -> src.getSender().hasPermission("basicshop.admin.logs")
+                                || src.getSender().hasPermission("basicshop.admin"))
                         .then(Commands.argument("date", StringArgumentType.word())
                                 .suggests((ctx, builder) -> {
                                     builder.suggest("today");
@@ -222,9 +224,11 @@ public final class ShopCommand {
                                 })
                                 .executes(ctx -> executeAdminLogs(ctx, null))
                                 .then(Commands.argument("player", StringArgumentType.word())
-                                        .executes(ctx -> executeAdminLogs(ctx, StringArgumentType.getString(ctx, "player"))))))
+                                        .executes(ctx -> executeAdminLogs(ctx,
+                                                StringArgumentType.getString(ctx, "player"))))))
                 .then(Commands.literal(cmdCfg.sub("reload"))
-                        .requires(src -> src.getSender().hasPermission("basicshop.admin.reload") || src.getSender().hasPermission("basicshop.admin"))
+                        .requires(src -> src.getSender().hasPermission("basicshop.admin.reload")
+                                || src.getSender().hasPermission("basicshop.admin"))
                         .executes(ctx -> {
                             configManager.load();
                             if (topSellersEngine != null) {
@@ -235,7 +239,8 @@ public final class ShopCommand {
                             return Command.SINGLE_SUCCESS;
                         }))
                 .then(Commands.literal(cmdCfg.sub("give"))
-                        .requires(src -> src.getSender().hasPermission("basicshop.admin.give") || src.getSender().hasPermission("basicshop.admin"))
+                        .requires(src -> src.getSender().hasPermission("basicshop.admin.give")
+                                || src.getSender().hasPermission("basicshop.admin"))
                         .then(Commands.argument("target", StringArgumentType.word())
                                 .then(Commands.argument("tool", StringArgumentType.word())
                                         .suggests((ctx, builder) -> {
@@ -297,7 +302,8 @@ public final class ShopCommand {
     private void openShop(Player player) {
         ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.CATEGORIES, null);
         Bukkit.getPluginManager().callEvent(openEvent);
-        if (openEvent.isCancelled()) return;
+        if (openEvent.isCancelled())
+            return;
 
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             CategoriesGui gui = new CategoriesGui(configManager, shopAPI, morePaperLib, topSellersEngine, player);
@@ -308,7 +314,8 @@ public final class ShopCommand {
     private void openQuickSell(Player player) {
         ShopOpenEvent openEvent = new ShopOpenEvent(player, ShopViewType.QUICK_SELL, null);
         Bukkit.getPluginManager().callEvent(openEvent);
-        if (openEvent.isCancelled()) return;
+        if (openEvent.isCancelled())
+            return;
 
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             QuickSellGui gui = new QuickSellGui(configManager, shopAPI, morePaperLib, player);
@@ -317,7 +324,8 @@ public final class ShopCommand {
     }
 
     private void openTopSellersGui(Player player) {
-        if (topSellersEngine == null) return;
+        if (topSellersEngine == null)
+            return;
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             TopSellersGui gui = new TopSellersGui(configManager, shopAPI, morePaperLib, topSellersEngine, player);
             player.openInventory(gui.getInventory());
@@ -325,7 +333,8 @@ public final class ShopCommand {
     }
 
     private void executeTopChat(CommandSender sender) {
-        if (topSellersEngine == null) return;
+        if (topSellersEngine == null)
+            return;
         int days = configManager.getMainConfig().getAnalyticsSettings().topSellers().days();
         List<TopSellerItem> topList = topSellersEngine.getTopSellers();
 
@@ -358,7 +367,8 @@ public final class ShopCommand {
         String mode = StringArgumentType.getString(ctx, "mode").toLowerCase();
 
         if ("web".equals(mode)) {
-            if (webUploader == null) return 0;
+            if (webUploader == null)
+                return 0;
             configManager.getMessagesConfig().send(sender, "analytics-uploading",
                     Placeholder.unparsed("days", String.valueOf(days)));
 
@@ -374,7 +384,8 @@ public final class ShopCommand {
             });
             return Command.SINGLE_SUCCESS;
         } else if ("ingame".equals(mode)) {
-            if (topSellersEngine == null) return 0;
+            if (topSellersEngine == null)
+                return 0;
             morePaperLib.scheduling().asyncScheduler().run(() -> {
                 List<TransactionRecord> records = topSellersEngine.readRecordsForDays(days);
                 double totalBought = 0;
@@ -405,7 +416,8 @@ public final class ShopCommand {
             });
             return Command.SINGLE_SUCCESS;
         } else {
-            sender.sendMessage(MM.deserialize("<red>Invalid mode '<white>" + mode + "</white>'. Use <white>web</white> or <white>ingame</white>."));
+            sender.sendMessage(MM.deserialize("<red>Invalid mode '<white>" + mode
+                    + "</white>'. Use <white>web</white> or <white>ingame</white>."));
             return 0;
         }
     }
@@ -429,14 +441,16 @@ public final class ShopCommand {
             }
         }
 
-        if (topSellersEngine == null) return 0;
+        if (topSellersEngine == null)
+            return 0;
 
         morePaperLib.scheduling().asyncScheduler().run(() -> {
             List<TransactionRecord> list = topSellersEngine.readRecordsForDate(targetDate);
             if (playerFilter != null && !playerFilter.isBlank()) {
                 String filterLower = playerFilter.toLowerCase();
                 list = list.stream()
-                        .filter(r -> r.getPlayerName().toLowerCase().equals(filterLower) || r.getPlayerId().toString().equalsIgnoreCase(filterLower))
+                        .filter(r -> r.getPlayerName().toLowerCase().equals(filterLower)
+                                || r.getPlayerId().toString().equalsIgnoreCase(filterLower))
                         .toList();
             }
 
@@ -461,7 +475,8 @@ public final class ShopCommand {
                     totalSold += r.getTotalPrice();
                 }
 
-                String timeStr = r.getTimestamp().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+                String timeStr = r.getTimestamp().atZone(ZoneId.systemDefault())
+                        .format(DateTimeFormatter.ofPattern("HH:mm:ss"));
                 String actionColor = r.getType() == TransactionType.BUY ? "<gold>" : "<green>";
                 ItemStack stack = new ItemStack(resolveMat(r.getItemId()));
                 Component itemComp = ItemText.format(stack, b -> b.amount(r.getAmount()));
@@ -510,24 +525,32 @@ public final class ShopCommand {
     private void sendHelp(Player player) {
         MainConfig.CommandsConfig cmdCfg = configManager.getMainConfig().getCommandsConfig();
         String prefix = configManager.getMessagesConfig().getPrefix();
-        String root   = cmdCfg.root();
+        String root = cmdCfg.root();
         player.sendMessage(MM.deserialize(prefix + "<yellow>BasicShop Commands:"));
         player.sendMessage(MM.deserialize("<gold>/" + root + "</gold> <gray>— Open the shop"));
-        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("help") + "</gold> <gray>— Show this message"));
-        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("top") + "</gold> <gray>— View top selling shop items"));
-        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("quicksell") + " " + cmdCfg.sub("quicksell-hand") + "</gold> <gray>— Sell the item in your hand"));
-        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("quicksell") + " " + cmdCfg.sub("quicksell-inventory") + "</gold> <gray>— Sell all sellable items"));
+        player.sendMessage(
+                MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("help") + "</gold> <gray>— Show this message"));
+        player.sendMessage(MM.deserialize(
+                "<gold>/" + root + " " + cmdCfg.sub("top") + "</gold> <gray>— View top selling shop items"));
+        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("quicksell") + " "
+                + cmdCfg.sub("quicksell-hand") + "</gold> <gray>— Sell the item in your hand"));
+        player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("quicksell") + " "
+                + cmdCfg.sub("quicksell-inventory") + "</gold> <gray>— Sell all sellable items"));
         if (player.hasPermission("basicshop.admin.analytics") || player.hasPermission("basicshop.admin")) {
-            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("admin") + " analytics <web|ingame> [days]</gold> <gray>— View/upload shop analytics"));
+            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("admin")
+                    + " analytics <web|ingame> [days]</gold> <gray>— View/upload shop analytics"));
         }
         if (player.hasPermission("basicshop.admin.logs") || player.hasPermission("basicshop.admin")) {
-            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("admin") + " logs <date> [<player>]</gold> <gray>— View transaction logs"));
+            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("admin")
+                    + " logs <date> [<player>]</gold> <gray>— View transaction logs"));
         }
         if (player.hasPermission("basicshop.admin.reload")) {
-            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("reload") + "</gold> <gray>— Reload configuration"));
+            player.sendMessage(MM.deserialize(
+                    "<gold>/" + root + " " + cmdCfg.sub("reload") + "</gold> <gray>— Reload configuration"));
         }
         if (player.hasPermission("basicshop.admin.give")) {
-            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("give") + " <player> <tool> <amount></gold> <gray>— Give a shop tool"));
+            player.sendMessage(MM.deserialize("<gold>/" + root + " " + cmdCfg.sub("give")
+                    + " <player> <tool> <amount></gold> <gray>— Give a shop tool"));
         }
     }
 
@@ -571,19 +594,21 @@ public final class ShopCommand {
             return;
         }
         String key = switch (result) {
-            case SUCCESS               -> null;
-            case NOT_ENOUGH_ITEMS      -> "quicksell-hand-empty";
-            case SELL_DISABLED         -> "item-sell-disabled";
-            case GLOBAL_SELL_DISABLED  -> "shop-sell-disabled";
-            case ECONOMY_UNAVAILABLE   -> "vault-unavailable";
-            default                    -> "vault-unavailable";
+            case SUCCESS -> null;
+            case NOT_ENOUGH_ITEMS -> "quicksell-hand-empty";
+            case SELL_DISABLED -> "item-sell-disabled";
+            case GLOBAL_SELL_DISABLED -> "shop-sell-disabled";
+            case ECONOMY_UNAVAILABLE -> "vault-unavailable";
+            default -> "vault-unavailable";
         };
         if (key != null) {
             configManager.getMessagesConfig().send(player, key);
         } else {
             int amount = handStack.getAmount();
             double earned = shopAPI.getItemByMaterial(handStack.getType())
-                    .flatMap(si -> si.getSellPrice().isPresent() ? java.util.Optional.of(si.getSellPrice().getAsDouble() * amount) : java.util.Optional.empty())
+                    .flatMap(si -> si.getSellPrice().isPresent()
+                            ? java.util.Optional.of(si.getSellPrice().getAsDouble() * amount)
+                            : java.util.Optional.empty())
                     .orElse(0.0);
 
             ItemStack itemStack = handStack.clone();
