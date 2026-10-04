@@ -29,11 +29,14 @@ tools:
     name: "<gold>Money Staff"
     lore:
       - "<gray>Click a container to sell its contents."
+      - "<gray>Click air to toggle recursive selling."
+      - "<gray>Use on cursor in GUI to sell items."
     # Force the enchantment glint without applying real enchantments
     enchantment-glint-override: true
     use-cooldown:
       cooldown_group: basicshop:money_staff
       seconds: 1.0
+    cursor-cooldown-seconds: 0.25
     usable-when-riding: false
   money_hoe:
     material: GOLDEN_HOE

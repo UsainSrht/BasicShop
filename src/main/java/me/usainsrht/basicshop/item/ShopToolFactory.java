@@ -20,11 +20,14 @@ public final class ShopToolFactory {
     private final NamespacedKey toolKey;
     /** When present, auto-sell is disabled (matches legacy {@code custom:autosell} semantics). */
     private final NamespacedKey autoSellDisabledKey;
+    /** When present, recursive selling is enabled on a money staff (default is disabled). */
+    private final NamespacedKey recursiveSellKey;
 
     public ShopToolFactory(Plugin plugin, ConfigManager configManager) {
         this.configManager = configManager;
         this.toolKey = new NamespacedKey(plugin, "shop_tool");
         this.autoSellDisabledKey = new NamespacedKey(plugin, "autosell_disabled");
+        this.recursiveSellKey = new NamespacedKey(plugin, "recursive_sell");
     }
 
     public ItemStack create(ShopToolType type, int amount) {
@@ -123,6 +126,42 @@ public final class ShopToolFactory {
     public boolean toggleAutoSell(ItemStack stack) {
         boolean next = !isAutoSellEnabled(stack);
         setAutoSellEnabled(stack, next);
+        return next;
+    }
+
+    /**
+     * Returns whether recursive selling is enabled on a money staff.
+     * Default is disabled; the recursive flag must be explicitly set on the item.
+     */
+    public boolean isRecursiveSellEnabled(ItemStack stack) {
+        if (stack == null || !stack.hasItemMeta()) return false;
+        return stack.getItemMeta().getPersistentDataContainer().has(recursiveSellKey, PersistentDataType.BYTE);
+    }
+
+    /**
+     * Sets whether recursive selling is enabled on a money staff and writes the updated metadata back to the stack.
+     */
+    public void setRecursiveSellEnabled(ItemStack stack, boolean enabled) {
+        if (stack == null || !stack.hasItemMeta()) return;
+
+        ItemMeta meta = stack.getItemMeta();
+        var pdc = meta.getPersistentDataContainer();
+        if (enabled) {
+            pdc.set(recursiveSellKey, PersistentDataType.BYTE, (byte) 1);
+        } else {
+            pdc.remove(recursiveSellKey);
+        }
+        stack.setItemMeta(meta);
+    }
+
+    /**
+     * Toggles recursive selling on a money staff and writes the updated item back to the stack.
+     *
+     * @return {@code true} if recursive selling is now enabled, {@code false} if disabled
+     */
+    public boolean toggleRecursiveSell(ItemStack stack) {
+        boolean next = !isRecursiveSellEnabled(stack);
+        setRecursiveSellEnabled(stack, next);
         return next;
     }
 

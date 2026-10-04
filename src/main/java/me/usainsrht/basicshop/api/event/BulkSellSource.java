@@ -14,5 +14,8 @@ public enum BulkSellSource {
     ITEM_STACKS,
 
     /** Sold automatically via the Money Hoe tool when harvesting crops. */
-    HOE_AUTOSELL
+    HOE_AUTOSELL,
+
+    /** Sold from an inventory GUI via the Money Staff cursor interaction. */
+    STAFF_CURSOR
 }

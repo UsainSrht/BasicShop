@@ -33,4 +33,22 @@ public class ToolsConfigTest {
         assertTrue(toolsConfig.isUsableWhenRiding(ShopToolType.MONEY_HOE));
         assertFalse(toolsConfig.isUsableWhenRiding(ShopToolType.SORTING_STAFF));
     }
+
+    @Test
+    public void testCursorCooldownDefault() {
+        YamlConfiguration config = new YamlConfiguration();
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+
+        org.junit.jupiter.api.Assertions.assertEquals(0.25, toolsConfig.getCursorCooldownSeconds(ShopToolType.MONEY_STAFF));
+    }
+
+    @Test
+    public void testCursorCooldownCustomConfiguration() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("tools.money_staff.cursor-cooldown-seconds", 0.15);
+
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+
+        org.junit.jupiter.api.Assertions.assertEquals(0.15, toolsConfig.getCursorCooldownSeconds(ShopToolType.MONEY_STAFF));
+    }
 }

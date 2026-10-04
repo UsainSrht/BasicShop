@@ -26,10 +26,15 @@ public final class ToolsConfig {
 
     public record ToolDefinition(
             ItemStack itemStack,
-            boolean usableWhenRiding
+            boolean usableWhenRiding,
+            double cursorCooldownSeconds
     ) {
+        public ToolDefinition(ItemStack itemStack, boolean usableWhenRiding) {
+            this(itemStack, usableWhenRiding, 0.25);
+        }
+
         public ToolDefinition(ItemStack itemStack) {
-            this(itemStack, false);
+            this(itemStack, false, 0.25);
         }
     }
 
@@ -43,6 +48,7 @@ public final class ToolsConfig {
             ConfigurationSection sub = section != null ? section.getConfigurationSection(type.getId()) : null;
             ItemStack stack = null;
             boolean usableWhenRiding = false;
+            double cursorCooldownSeconds = 0.25;
             if (sub != null) {
                 try {
                     stack = YamlItem.parse(sub);
@@ -50,6 +56,7 @@ public final class ToolsConfig {
                     LOGGER.log(Level.WARNING, "Failed to parse tool configuration section '" + type.getId() + "': " + t.getMessage(), t);
                 }
                 usableWhenRiding = sub.getBoolean("usable-when-riding", false);
+                cursorCooldownSeconds = sub.getDouble("cursor-cooldown-seconds", 0.25);
             }
             if (stack == null || stack.getType().isAir()) {
                 try {
@@ -64,7 +71,7 @@ public final class ToolsConfig {
                 } catch (Throwable ignored) {}
             }
 
-            parsed.put(type, new ToolDefinition(stack, usableWhenRiding));
+            parsed.put(type, new ToolDefinition(stack, usableWhenRiding, cursorCooldownSeconds));
         }
 
         this.tools = Collections.unmodifiableMap(parsed);
@@ -88,6 +95,11 @@ public final class ToolsConfig {
         return get(type).usableWhenRiding();
     }
 
+    public double getCursorCooldownSeconds(ShopToolType type) {
+        if (type == null) return 0.25;
+        return get(type).cursorCooldownSeconds();
+    }
+
     public Map<ShopToolType, ToolDefinition> getAll() {
         return tools;
     }
@@ -107,7 +119,11 @@ public final class ToolsConfig {
             case MONEY_STAFF -> {
                 config.set("material", "BLAZE_ROD");
                 config.set("name", "<gold>Money Staff");
-                config.set("lore", List.of("<gray>Click a container to sell its contents."));
+                config.set("lore", List.of(
+                        "<gray>Click a container to sell its contents.",
+                        "<gray>Click air to toggle recursive selling.",
+                        "<gray>Use on cursor in GUI to sell items."
+                ));
                 config.set("enchantment-glint-override", true);
                 config.set("use-cooldown.cooldown_group", "basicshop:money_staff");
                 config.set("use-cooldown.seconds", 1.0);

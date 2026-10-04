@@ -71,6 +71,27 @@ public interface ShopAPI {
     QuickSellResult sellFromInventory(Player player, Inventory inventory);
 
     /**
+     * Sells every sellable item in the given inventory and pays the player.
+     * When {@code recursive} is true, sellable items inside container items (e.g. Shulker Boxes)
+     * are also sold without consuming the container items themselves.
+     */
+    QuickSellResult sellFromInventory(Player player, Inventory inventory, boolean recursive);
+
+    /**
+     * Sells the item in the specified inventory slot.
+     * If the item is a container item (e.g. Shulker Box) and {@code recursive} is true,
+     * sellable items inside it are sold and the container item is updated in place.
+     */
+    QuickSellResult sellSlot(Player player, Inventory inventory, int slot, boolean recursive);
+
+    /**
+     * Sells all items in the given inventory matching the specified materials.
+     * If {@code includeContainers} is true, matching items inside container items (e.g. Shulker Boxes)
+     * are also sold and the container items are updated in place.
+     */
+    QuickSellResult sellMatchingItems(Player player, Inventory inventory, java.util.Set<Material> materials, boolean includeContainers);
+
+    /**
      * Sells the given item stacks virtually (no inventory removal) and pays the player.
      */
     QuickSellResult sellItemStacks(Player player, Collection<ItemStack> stacks);
