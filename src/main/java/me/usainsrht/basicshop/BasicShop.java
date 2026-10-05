@@ -46,6 +46,7 @@ public final class BasicShop extends JavaPlugin {
     private me.usainsrht.basicshop.analytics.TopSellersEngine topSellersEngine;
     private me.usainsrht.basicshop.analytics.AnalyticsWebUploader webUploader;
     private me.usainsrht.basicshop.hook.HookManager hookManager;
+    private me.usainsrht.basicshop.bazaar.BazaarService bazaarService;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -90,10 +91,23 @@ public final class BasicShop extends JavaPlugin {
         hookManager = new me.usainsrht.basicshop.hook.HookManager(this, configManager, topSellersEngine);
         hookManager.registerHooks();
 
+        // 5.7 BasicBazaar Integration (Soft Dependency)
+        if (getServer().getPluginManager().isPluginEnabled("BasicBazaar")) {
+            try {
+                bazaarService = new me.usainsrht.basicshop.bazaar.BasicBazaarHook(configManager, toolFactory, morePaperLib);
+                getLogger().info("Successfully hooked into BasicBazaar for Bazaar Staff functionality.");
+            } catch (Throwable t) {
+                getLogger().log(Level.WARNING, "Failed to initialize BasicBazaar integration", t);
+                bazaarService = new me.usainsrht.basicshop.bazaar.NoOpBazaarService();
+            }
+        } else {
+            bazaarService = new me.usainsrht.basicshop.bazaar.NoOpBazaarService();
+        }
+
         // 6. Listeners
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
         getServer().getPluginManager().registerEvents(
-                new ToolListener(configManager, shopAPI, toolFactory, morePaperLib),
+                new ToolListener(configManager, shopAPI, toolFactory, morePaperLib, bazaarService),
                 this
         );
 
@@ -167,6 +181,10 @@ public final class BasicShop extends JavaPlugin {
 
     public me.usainsrht.basicshop.analytics.AnalyticsWebUploader getWebUploader() {
         return webUploader;
+    }
+
+    public me.usainsrht.basicshop.bazaar.BazaarService getBazaarService() {
+        return bazaarService;
     }
 }
 

@@ -22,7 +22,7 @@ A modern, lightweight, and high-performance shop plugin for Minecraft **Paper** 
   - In-game Top Sellers ranking (`/shop top`) accessible through chat or an interactive GUI.
   - Cloudflare Worker web analytics dashboard (`/shop admin analytics web`) with sharable, expiring dashboard links (similar to Spark or mclo.gs).
   - In-game audit logs with date and player filtering (`/shop admin logs`).
-- **🔧 Special Shop Tools**: Custom PersistentDataContainer (PDC) items (Money Staff, Money Hoe, Sorting Staff) offering unique selling and inventory management mechanics.
+- **🔧 Special Shop Tools**: Custom PersistentDataContainer (PDC) items (Money Staff, Money Hoe, Sorting Staff, Bazaar Staff) offering unique selling and inventory management mechanics.
 - **🧩 Integrations**:
   - Hooks into [Vault](https://www.spigotmc.org/resources/vault.34315/) economy providers.
   - [PlaceholderAPI](https://wiki.placeholderapi.com/) and [MiniPlaceholders](https://miniplaceholders.nova54.dev/) expansions for Top Sellers data.
@@ -78,6 +78,19 @@ A container organization wand:
 
 ---
 
+### 4. Bazaar Staff (`bazaar_staff`)
+A specialized inventory management wand integrated with [BasicBazaar](https://github.com/UsainSrht/BasicBazaar) (soft dependency):
+- **Bazaar Listing Mode (Default)**: Restocks the player's active bazaar listings with matching items from containers or inventory slots.
+- **Order Mode**: Fulfills/delivers matching items to active buy orders on the bazaar (highest paying orders first), depositing earnings directly to the player.
+- **Air Right-Click**: Toggles between Bazaar Listing Restock Mode and Order Delivery Mode.
+- **Air Shift-Right-Click**: Toggles Recursive Mode (inspecting nested containers like Shulker Boxes).
+- **World Container Interactions**: Right-clicking a container block processes all contained items (and nested containers if recursive) into the player's listings or active buy orders.
+- **In-Inventory Cursor Actions**: Fully mirrors the Money Staff's bidirectional cursor mechanics (Left-Click slot/cursor, Right-Click matching in inventory).
+- **Graceful Soft-Dependency**: If BasicBazaar is not installed or enabled, the feature is cleanly ignored without runtime errors.
+- **Configurable Messaging**: `use-native-bazaar-messages: true` sends native BasicBazaar transaction notifications.
+
+---
+
 ## 📜 Commands & Permissions
 
 | Command | Aliases | Description | Permission | Default |
@@ -99,6 +112,7 @@ A container organization wand:
 - `basicshop.tools.staff`: Allows using the Money Staff (default: `true`).
 - `basicshop.tools.hoe`: Allows using the Money Hoe (default: `true`).
 - `basicshop.tools.sorting_staff`: Allows using the Sorting Staff (default: `true`).
+- `basicshop.tools.bazaar_staff`: Allows using the Bazaar Staff (default: `true`).
 - `basicshop.admin`: Grants all admin permissions (default: `op`).
 
 ---

@@ -12,7 +12,8 @@ public enum ShopToolType {
 
     MONEY_STAFF("money_staff"),
     MONEY_HOE("money_hoe"),
-    SORTING_STAFF("sorting_staff");
+    SORTING_STAFF("sorting_staff"),
+    BAZAAR_STAFF("bazaar_staff");
 
     private final String id;
     private final NamespacedKey cooldownKey;

@@ -24,5 +24,11 @@ public class ShopToolTypeTest {
         assertNotNull(sortingKey);
         assertEquals("basicshop", sortingKey.getNamespace());
         assertEquals("sorting_staff", sortingKey.getKey());
+
+        NamespacedKey bazaarKey = ShopToolType.BAZAAR_STAFF.getCooldownKey();
+        assertNotNull(bazaarKey);
+        assertEquals("basicshop", bazaarKey.getNamespace());
+        assertEquals("bazaar_staff", bazaarKey.getKey());
+        assertEquals(ShopToolType.BAZAAR_STAFF, ShopToolType.fromId("bazaar_staff").orElse(null));
     }
 }

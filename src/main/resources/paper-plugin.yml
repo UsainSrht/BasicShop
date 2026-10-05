@@ -21,6 +21,10 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
+    BasicBazaar:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 permissions:
   basicshop.use:
@@ -77,6 +81,10 @@ permissions:
 
   basicshop.tools.sorting_staff:
     description: Allows using the Sorting Staff
+    default: true
+
+  basicshop.tools.bazaar_staff:
+    description: Allows using the Bazaar Staff
     default: true
 
   basicshop.admin:

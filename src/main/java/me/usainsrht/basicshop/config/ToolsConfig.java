@@ -27,14 +27,19 @@ public final class ToolsConfig {
     public record ToolDefinition(
             ItemStack itemStack,
             boolean usableWhenRiding,
-            double cursorCooldownSeconds
+            double cursorCooldownSeconds,
+            boolean useNativeBazaarMessages
     ) {
+        public ToolDefinition(ItemStack itemStack, boolean usableWhenRiding, double cursorCooldownSeconds) {
+            this(itemStack, usableWhenRiding, cursorCooldownSeconds, true);
+        }
+
         public ToolDefinition(ItemStack itemStack, boolean usableWhenRiding) {
-            this(itemStack, usableWhenRiding, 0.25);
+            this(itemStack, usableWhenRiding, 0.25, true);
         }
 
         public ToolDefinition(ItemStack itemStack) {
-            this(itemStack, false, 0.25);
+            this(itemStack, false, 0.25, true);
         }
     }
 
@@ -49,6 +54,7 @@ public final class ToolsConfig {
             ItemStack stack = null;
             boolean usableWhenRiding = false;
             double cursorCooldownSeconds = 0.25;
+            boolean useNativeBazaarMessages = true;
             if (sub != null) {
                 try {
                     stack = YamlItem.parse(sub);
@@ -57,6 +63,7 @@ public final class ToolsConfig {
                 }
                 usableWhenRiding = sub.getBoolean("usable-when-riding", false);
                 cursorCooldownSeconds = sub.getDouble("cursor-cooldown-seconds", 0.25);
+                useNativeBazaarMessages = sub.getBoolean("use-native-bazaar-messages", true);
             }
             if (stack == null || stack.getType().isAir()) {
                 try {
@@ -71,7 +78,7 @@ public final class ToolsConfig {
                 } catch (Throwable ignored) {}
             }
 
-            parsed.put(type, new ToolDefinition(stack, usableWhenRiding, cursorCooldownSeconds));
+            parsed.put(type, new ToolDefinition(stack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages));
         }
 
         this.tools = Collections.unmodifiableMap(parsed);
@@ -100,6 +107,11 @@ public final class ToolsConfig {
         return get(type).cursorCooldownSeconds();
     }
 
+    public boolean isUseNativeBazaarMessages(ShopToolType type) {
+        if (type == null) return true;
+        return get(type).useNativeBazaarMessages();
+    }
+
     public Map<ShopToolType, ToolDefinition> getAll() {
         return tools;
     }
@@ -110,6 +122,7 @@ public final class ToolsConfig {
             case MONEY_STAFF -> Material.BLAZE_ROD;
             case MONEY_HOE -> Material.GOLDEN_HOE;
             case SORTING_STAFF -> Material.AMETHYST_SHARD;
+            case BAZAAR_STAFF -> Material.BLAZE_ROD;
         };
     }
 
@@ -149,6 +162,19 @@ public final class ToolsConfig {
                 config.set("enchantment-glint-override", true);
                 config.set("use-cooldown.cooldown_group", "basicshop:sorting_staff");
                 config.set("use-cooldown.seconds", 2.0);
+            }
+            case BAZAAR_STAFF -> {
+                config.set("material", "BLAZE_ROD");
+                config.set("name", "<aqua>Bazaar Staff");
+                config.set("lore", List.of(
+                        "<gray>Click a container to restock listings or deliver orders.",
+                        "<gray>Click air to toggle between listing and order mode.",
+                        "<gray>Shift-click air to toggle recursive mode.",
+                        "<gray>Use on cursor in GUI to manage items."
+                ));
+                config.set("enchantment-glint-override", true);
+                config.set("use-cooldown.cooldown_group", "basicshop:bazaar_staff");
+                config.set("use-cooldown.seconds", 1.0);
             }
         }
         try {

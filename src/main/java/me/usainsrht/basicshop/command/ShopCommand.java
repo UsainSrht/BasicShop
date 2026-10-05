@@ -572,9 +572,11 @@ public final class ShopCommand {
             return 0;
         }
 
-        ItemStack stack = toolFactory.create(toolType, amount);
-        Map<Integer, ItemStack> overflow = target.getInventory().addItem(stack);
-        overflow.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
+        for (int i = 0; i < amount; i++) {
+            ItemStack stack = toolFactory.create(toolType, 1);
+            Map<Integer, ItemStack> overflow = target.getInventory().addItem(stack);
+            overflow.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
+        }
 
         configManager.getMessagesConfig().send(sender, "give-success",
                 Placeholder.unparsed("amount", String.valueOf(amount)),

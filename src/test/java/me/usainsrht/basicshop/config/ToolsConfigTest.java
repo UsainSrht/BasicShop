@@ -46,9 +46,22 @@ public class ToolsConfigTest {
     public void testCursorCooldownCustomConfiguration() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("tools.money_staff.cursor-cooldown-seconds", 0.15);
+        config.set("tools.bazaar_staff.cursor-cooldown-seconds", 0.10);
 
         ToolsConfig toolsConfig = new ToolsConfig(config);
 
         org.junit.jupiter.api.Assertions.assertEquals(0.15, toolsConfig.getCursorCooldownSeconds(ShopToolType.MONEY_STAFF));
+        org.junit.jupiter.api.Assertions.assertEquals(0.10, toolsConfig.getCursorCooldownSeconds(ShopToolType.BAZAAR_STAFF));
+    }
+
+    @Test
+    public void testUseNativeBazaarMessagesDefaultTrueAndConfigurable() {
+        YamlConfiguration config = new YamlConfiguration();
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+        assertTrue(toolsConfig.isUseNativeBazaarMessages(ShopToolType.BAZAAR_STAFF));
+
+        config.set("tools.bazaar_staff.use-native-bazaar-messages", false);
+        ToolsConfig customConfig = new ToolsConfig(config);
+        assertFalse(customConfig.isUseNativeBazaarMessages(ShopToolType.BAZAAR_STAFF));
     }
 }

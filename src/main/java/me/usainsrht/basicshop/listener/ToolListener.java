@@ -106,17 +106,28 @@ public final class ToolListener implements Listener {
     private final ShopAPI shopAPI;
     private final ShopToolFactory toolFactory;
     private final MorePaperLib morePaperLib;
+    private final me.usainsrht.basicshop.bazaar.BazaarService bazaarService;
     private final Map<UUID, Long> cursorCooldowns = new ConcurrentHashMap<>();
 
     public ToolListener(
             ConfigManager configManager,
             ShopAPI shopAPI,
             ShopToolFactory toolFactory,
-            MorePaperLib morePaperLib) {
+            MorePaperLib morePaperLib,
+            me.usainsrht.basicshop.bazaar.BazaarService bazaarService) {
         this.configManager = configManager;
         this.shopAPI = shopAPI;
         this.toolFactory = toolFactory;
         this.morePaperLib = morePaperLib;
+        this.bazaarService = bazaarService != null ? bazaarService : new me.usainsrht.basicshop.bazaar.NoOpBazaarService();
+    }
+
+    public ToolListener(
+            ConfigManager configManager,
+            ShopAPI shopAPI,
+            ShopToolFactory toolFactory,
+            MorePaperLib morePaperLib) {
+        this(configManager, shopAPI, toolFactory, morePaperLib, new me.usainsrht.basicshop.bazaar.NoOpBazaarService());
     }
 
     private boolean isRidingRestricted(Player player, ShopToolType type) {
@@ -144,7 +155,7 @@ public final class ToolListener implements Listener {
             return;
         ItemStack item = event.getItem();
         ShopToolType type = toolFactory.getToolType(item);
-        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF) {
+        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF || type == ShopToolType.BAZAAR_STAFF) {
             if (isRidingRestricted(event.getPlayer(), type)) {
                 event.setCancelled(true);
             }
@@ -155,7 +166,7 @@ public final class ToolListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         ShopToolType type = toolFactory.getToolType(event.getItemInHand());
         // hoe tilling also fires blockplaceevent
-        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF) {
+        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF || type == ShopToolType.BAZAAR_STAFF) {
             event.setCancelled(true);
         }
     }
@@ -259,6 +270,59 @@ public final class ToolListener implements Listener {
         });
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBazaarStaffUse(PlayerInteractEvent event) {
+        if (!event.hasBlock() || !event.hasItem())
+            return;
+        if (!event.getAction().isRightClick())
+            return;
+        if (event.getHand() != EquipmentSlot.HAND)
+            return;
+
+        ItemStack item = event.getItem();
+        if (toolFactory.getToolType(item) != ShopToolType.BAZAAR_STAFF)
+            return;
+
+        if (bazaarService == null || !bazaarService.isAvailable())
+            return;
+
+        event.setCancelled(true);
+
+        Player player = event.getPlayer();
+        if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
+            return;
+        if (!player.hasPermission("basicshop.tools.bazaar_staff"))
+            return;
+        toolFactory.ensureUseCooldown(item, ShopToolType.BAZAAR_STAFF);
+        if (player.getCooldown(ShopToolType.BAZAAR_STAFF.getCooldownKey()) > 0)
+            return;
+
+        Block block = event.getClickedBlock();
+        if (block == null)
+            return;
+
+        BlockState state = block.getState();
+        if (!(state instanceof Container container))
+            return;
+
+        boolean orderMode = toolFactory.isOrderModeEnabled(item);
+        boolean recursive = toolFactory.isRecursiveSellEnabled(item);
+
+        me.usainsrht.basicshop.api.event.BazaarStaffUseEvent staffEvent =
+                new me.usainsrht.basicshop.api.event.BazaarStaffUseEvent(player, item, block, container, orderMode, recursive);
+        Bukkit.getPluginManager().callEvent(staffEvent);
+        if (staffEvent.isCancelled())
+            return;
+
+        toolFactory.applyCooldown(player, item, ShopToolType.BAZAAR_STAFF);
+
+        boolean useNativeMessages = configManager.getToolsConfig().isUseNativeBazaarMessages(ShopToolType.BAZAAR_STAFF);
+        Location location = block.getLocation();
+        morePaperLib.scheduling().regionSpecificScheduler(location).runDelayed(
+                () -> bazaarService.handleContainerUse(player, block, staffEvent.isOrderMode(), staffEvent.isRecursive(), useNativeMessages),
+                1L);
+    }
+
     private void sellItemsInBlock(Player player, Block block, boolean recursive) {
         if (!player.isOnline())
             return;
@@ -326,6 +390,75 @@ public final class ToolListener implements Listener {
 
         String key = recursiveEnabled ? "tool-staff-recursive-on" : "tool-staff-recursive-off";
         configManager.getMessagesConfig().send(player, key);
+    }
+
+    /**
+     * Handles air clicks for Bazaar Staff.
+     * Regular right-click air toggles between listing restock and order delivery mode.
+     * Shift right-click air toggles recursive mode.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
+    public void onBazaarStaffToggle(PlayerInteractEvent event) {
+        Action action = event.getAction();
+        if (action != Action.RIGHT_CLICK_AIR)
+            return;
+        if (event.getHand() != EquipmentSlot.HAND)
+            return;
+
+        ItemStack item = event.getItem();
+        if (item == null || item.getType().isAir()) {
+            item = event.getPlayer().getInventory().getItemInMainHand();
+        }
+        if (toolFactory.getToolType(item) != ShopToolType.BAZAAR_STAFF)
+            return;
+
+        if (bazaarService == null || !bazaarService.isAvailable())
+            return;
+
+        Player player = event.getPlayer();
+        if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
+            return;
+        if (!player.hasPermission("basicshop.tools.bazaar_staff"))
+            return;
+        toolFactory.ensureUseCooldown(item, ShopToolType.BAZAAR_STAFF);
+        if (player.getCooldown(ShopToolType.BAZAAR_STAFF.getCooldownKey()) > 0)
+            return;
+
+        if (player.isSneaking()) {
+            // Shift right click air: toggle recursive mode
+            boolean targetRecursive = !toolFactory.isRecursiveSellEnabled(item);
+            me.usainsrht.basicshop.api.event.BazaarStaffRecursiveToggleEvent toggleEvent =
+                    new me.usainsrht.basicshop.api.event.BazaarStaffRecursiveToggleEvent(player, item, targetRecursive);
+            Bukkit.getPluginManager().callEvent(toggleEvent);
+            if (toggleEvent.isCancelled())
+                return;
+
+            boolean recursiveEnabled = toggleEvent.isNewRecursiveState();
+            toolFactory.setRecursiveSellEnabled(item, recursiveEnabled);
+            player.getInventory().setItemInMainHand(item);
+
+            toolFactory.applyCooldown(player, item, ShopToolType.BAZAAR_STAFF);
+
+            String key = recursiveEnabled ? "tool-bazaar-staff-recursive-on" : "tool-bazaar-staff-recursive-off";
+            configManager.getMessagesConfig().send(player, key);
+        } else {
+            // Regular right click air: toggle listing mode vs order mode
+            boolean targetOrderMode = !toolFactory.isOrderModeEnabled(item);
+            me.usainsrht.basicshop.api.event.BazaarStaffModeToggleEvent toggleEvent =
+                    new me.usainsrht.basicshop.api.event.BazaarStaffModeToggleEvent(player, item, targetOrderMode);
+            Bukkit.getPluginManager().callEvent(toggleEvent);
+            if (toggleEvent.isCancelled())
+                return;
+
+            boolean orderModeEnabled = toggleEvent.isNewOrderMode();
+            toolFactory.setOrderModeEnabled(item, orderModeEnabled);
+            player.getInventory().setItemInMainHand(item);
+
+            toolFactory.applyCooldown(player, item, ShopToolType.BAZAAR_STAFF);
+
+            String key = orderModeEnabled ? "tool-bazaar-staff-mode-order" : "tool-bazaar-staff-mode-listing";
+            configManager.getMessagesConfig().send(player, key);
+        }
     }
 
     /**
@@ -831,6 +964,163 @@ public final class ToolListener implements Listener {
                     Placeholder.component("item", itemTextComp),
                     Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBazaarStaffCursorClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player))
+            return;
+
+        if (player.getGameMode() == GameMode.CREATIVE)
+            return;
+
+        if (bazaarService == null || !bazaarService.isAvailable())
+            return;
+
+        ItemStack cursor = event.getCursor();
+        ItemStack current = event.getCurrentItem();
+
+        boolean staffOnCursor = toolFactory.getToolType(cursor) == ShopToolType.BAZAAR_STAFF;
+        boolean staffInSlot = toolFactory.getToolType(current) == ShopToolType.BAZAAR_STAFF;
+
+        if (!staffOnCursor && !staffInSlot)
+            return;
+        if (staffOnCursor && staffInSlot)
+            return;
+
+        Inventory clickedInv = event.getClickedInventory();
+        if (clickedInv == null)
+            return;
+
+        Inventory topInv = event.getView().getTopInventory();
+        if (!isRealTopInventory(topInv))
+            return;
+
+        try {
+            if (clickedInv.getType() == InventoryType.CRAFTING)
+                return;
+        } catch (Throwable ignored) {
+        }
+
+        if (staffOnCursor) {
+            handleBazaarStaffOnCursorClick(event, player, cursor, current, clickedInv);
+        } else {
+            handleItemOnBazaarStaffClick(event, player, cursor, current, clickedInv);
+        }
+    }
+
+    private void handleBazaarStaffOnCursorClick(
+            InventoryClickEvent event,
+            Player player,
+            ItemStack cursor,
+            ItemStack current,
+            Inventory clickedInv
+    ) {
+        if (current == null || current.getAmount() <= 0 || current.isEmpty())
+            return;
+
+        ItemStack staff = cursor.clone();
+        event.setCancelled(true);
+
+        if (toolFactory.isShopTool(current))
+            return;
+
+        if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
+            return;
+
+        if (!player.hasPermission("basicshop.tools.bazaar_staff")) {
+            configManager.getMessagesConfig().send(player, "no-permission");
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        double cdSeconds = configManager.getToolsConfig().getCursorCooldownSeconds(ShopToolType.BAZAAR_STAFF);
+        long cdMillis = Math.round(cdSeconds * 1000.0);
+        Long lastClick = cursorCooldowns.get(player.getUniqueId());
+        if (lastClick != null && (now - lastClick) < cdMillis)
+            return;
+        cursorCooldowns.put(player.getUniqueId(), now);
+
+        ClickType clickType = event.getClick();
+        if (!clickType.isLeftClick() && !clickType.isRightClick())
+            return;
+
+        boolean orderMode = toolFactory.isOrderModeEnabled(staff);
+        boolean recursive = toolFactory.isRecursiveSellEnabled(staff);
+
+        me.usainsrht.basicshop.api.event.BazaarStaffCursorEvent cursorEvent =
+                new me.usainsrht.basicshop.api.event.BazaarStaffCursorEvent(
+                        player, cursor, clickedInv, event.getSlot(), clickType, current, true, orderMode, recursive);
+        Bukkit.getPluginManager().callEvent(cursorEvent);
+        if (cursorEvent.isCancelled())
+            return;
+
+        int slot = event.getSlot();
+        ItemStack targetItem = current.clone();
+        boolean isContainer = me.usainsrht.basicshop.bazaar.BasicBazaarHook.isContainerItem(current);
+        boolean useNativeMessages = configManager.getToolsConfig().isUseNativeBazaarMessages(ShopToolType.BAZAAR_STAFF);
+
+        bazaarService.handleStaffOnCursorClick(
+                player, clickedInv, slot, clickType, targetItem, isContainer, staff,
+                cursorEvent.isOrderMode(), cursorEvent.isRecursive(), useNativeMessages
+        );
+    }
+
+    private void handleItemOnBazaarStaffClick(
+            InventoryClickEvent event,
+            Player player,
+            ItemStack cursor,
+            ItemStack current,
+            Inventory clickedInv
+    ) {
+        if (cursor == null || cursor.getAmount() <= 0 || cursor.isEmpty())
+            return;
+
+        event.setCancelled(true);
+
+        if (toolFactory.isShopTool(cursor))
+            return;
+
+        if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
+            return;
+
+        if (!player.hasPermission("basicshop.tools.bazaar_staff")) {
+            configManager.getMessagesConfig().send(player, "no-permission");
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        double cdSeconds = configManager.getToolsConfig().getCursorCooldownSeconds(ShopToolType.BAZAAR_STAFF);
+        long cdMillis = Math.round(cdSeconds * 1000.0);
+        Long lastClick = cursorCooldowns.get(player.getUniqueId());
+        if (lastClick != null && (now - lastClick) < cdMillis)
+            return;
+        cursorCooldowns.put(player.getUniqueId(), now);
+
+        ClickType clickType = event.getClick();
+        if (!clickType.isLeftClick() && !clickType.isRightClick())
+            return;
+
+        ItemStack staffItem = current.clone();
+        boolean orderMode = toolFactory.isOrderModeEnabled(staffItem);
+        boolean recursive = toolFactory.isRecursiveSellEnabled(staffItem);
+
+        me.usainsrht.basicshop.api.event.BazaarStaffCursorEvent cursorEvent =
+                new me.usainsrht.basicshop.api.event.BazaarStaffCursorEvent(
+                        player, current, clickedInv, event.getSlot(), clickType, cursor, false, orderMode, recursive);
+        Bukkit.getPluginManager().callEvent(cursorEvent);
+        if (cursorEvent.isCancelled())
+            return;
+
+        int slot = event.getSlot();
+        ItemStack targetCursor = cursor.clone();
+        boolean isContainer = me.usainsrht.basicshop.bazaar.BasicBazaarHook.isContainerItem(cursor);
+        boolean useNativeMessages = configManager.getToolsConfig().isUseNativeBazaarMessages(ShopToolType.BAZAAR_STAFF);
+
+        bazaarService.handleItemOnStaffClick(
+                player, clickedInv, slot, clickType, targetCursor, isContainer, staffItem,
+                cursorEvent.isOrderMode(), cursorEvent.isRecursive(), useNativeMessages
+        );
     }
 
     @EventHandler

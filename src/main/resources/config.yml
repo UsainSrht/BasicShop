@@ -38,6 +38,7 @@ tools:
       seconds: 1.0
     cursor-cooldown-seconds: 0.25
     usable-when-riding: false
+    max_stack_size: 1
   money_hoe:
     material: GOLDEN_HOE
     name: "<gold>Money Hoe"
@@ -53,6 +54,7 @@ tools:
       cooldown_group: basicshop:money_hoe
       seconds: 0.5
     usable-when-riding: false
+    max_stack_size: 1
   sorting_staff:
     material: AMETHYST_SHARD
     name: "<light_purple>Sorting Staff"
@@ -63,6 +65,23 @@ tools:
       cooldown_group: basicshop:sorting_staff
       seconds: 2.0
     usable-when-riding: false
+    max_stack_size: 1
+  bazaar_staff:
+    material: BLAZE_ROD
+    name: "<aqua>Bazaar Staff"
+    lore:
+      - "<gray>Click a container to restock listings or deliver orders."
+      - "<gray>Click air to toggle between listing and order mode."
+      - "<gray>Shift-click air to toggle recursive mode."
+      - "<gray>Use on cursor in GUI to manage items."
+    enchantment-glint-override: true
+    use-cooldown:
+      cooldown_group: basicshop:bazaar_staff
+      seconds: 1.0
+    cursor-cooldown-seconds: 0.25
+    usable-when-riding: false
+    use-native-bazaar-messages: true
+    max_stack_size: 1
 
 # Global toggles
 global:

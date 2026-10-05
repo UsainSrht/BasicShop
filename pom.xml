@@ -116,6 +116,14 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- BasicBazaar — Soft Dependency -->
+        <dependency>
+            <groupId>me.usainsrht.basicbazaar</groupId>
+            <artifactId>BasicBazaar</artifactId>
+            <version>1.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
