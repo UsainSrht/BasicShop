@@ -85,6 +85,13 @@ public interface ShopAPI {
     QuickSellResult sellSlot(Player player, Inventory inventory, int slot, boolean recursive);
 
     /**
+     * Sells the item stack currently on the player's cursor.
+     * If the item is a container item (e.g. Shulker Box) and {@code recursive} is true,
+     * sellable items inside it are sold and the container item is updated in place.
+     */
+    QuickSellResult sellCursor(Player player, boolean recursive);
+
+    /**
      * Sells all items in the given inventory matching the specified materials.
      * If {@code includeContainers} is true, matching items inside container items (e.g. Shulker Boxes)
      * are also sold and the container items are updated in place.

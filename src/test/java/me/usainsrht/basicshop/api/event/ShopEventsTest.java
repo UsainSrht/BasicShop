@@ -10,6 +10,7 @@ import me.usainsrht.basicshop.api.model.TransactionResult;
 import me.usainsrht.basicshop.api.model.TransactionType;
 import me.usainsrht.basicshop.config.ConfigManager;
 import me.usainsrht.basicshop.config.MainConfig;
+import me.usainsrht.basicshop.config.ToolsConfig;
 import me.usainsrht.basicshop.item.ShopToolFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -609,7 +610,7 @@ public class ShopEventsTest {
     }
 
     @Test
-    public void testInventoryCloseCreativeModeClearsCursorWhenDuplicatePresent() {
+    public void testStaffCursorClickCreativeModeExitsEarlyWithoutCancellingEvent() {
         ConfigManager configManager = mock(ConfigManager.class);
         ShopToolFactory toolFactory = mock(ShopToolFactory.class);
         me.usainsrht.basicshop.listener.ToolListener listener =
@@ -621,56 +622,132 @@ public class ShopEventsTest {
         ItemStack cursorStaff = mock(ItemStack.class);
         when(toolFactory.getToolType(cursorStaff)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
 
-        ItemStack inventoryStaff = mock(ItemStack.class);
-        when(toolFactory.getToolType(inventoryStaff)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
+        org.bukkit.event.inventory.InventoryClickEvent event = mock(org.bukkit.event.inventory.InventoryClickEvent.class);
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getCursor()).thenReturn(cursorStaff);
+        when(event.isCancelled()).thenReturn(false);
 
-        PlayerInventory playerInventory = mock(PlayerInventory.class);
-        when(playerInventory.getContents()).thenReturn(new ItemStack[]{inventoryStaff});
-        when(player.getInventory()).thenReturn(playerInventory);
+        listener.onStaffCursorClick(event);
 
-        org.bukkit.inventory.InventoryView view = mock(org.bukkit.inventory.InventoryView.class);
-        when(view.getPlayer()).thenReturn(player);
-        when(view.getCursor()).thenReturn(cursorStaff);
-
-        org.bukkit.event.inventory.InventoryCloseEvent event =
-                new org.bukkit.event.inventory.InventoryCloseEvent(view);
-
-        listener.onInventoryClose(event);
-
-        verify(view).setCursor(null);
-        verify(player).setItemOnCursor(null);
+        verify(event, never()).setCancelled(anyBoolean());
+        assertFalse(event.isCancelled());
     }
 
     @Test
-    public void testInventoryCloseSurvivalModePreservesCursor() {
+    public void testItemOnStaffClickCreativeModeExitsEarlyWithoutCancellingEvent() {
         ConfigManager configManager = mock(ConfigManager.class);
         ShopToolFactory toolFactory = mock(ShopToolFactory.class);
         me.usainsrht.basicshop.listener.ToolListener listener =
                 new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, null);
 
         Player player = mock(Player.class);
+        when(player.getGameMode()).thenReturn(org.bukkit.GameMode.CREATIVE);
+
+        ItemStack cursorItem = mock(ItemStack.class);
+        when(toolFactory.getToolType(cursorItem)).thenReturn(null);
+
+        ItemStack staffSlot = mock(ItemStack.class);
+        when(toolFactory.getToolType(staffSlot)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
+
+        org.bukkit.event.inventory.InventoryClickEvent event = mock(org.bukkit.event.inventory.InventoryClickEvent.class);
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getCursor()).thenReturn(cursorItem);
+        when(event.getCurrentItem()).thenReturn(staffSlot);
+        when(event.isCancelled()).thenReturn(false);
+
+        listener.onStaffCursorClick(event);
+
+        verify(event, never()).setCancelled(anyBoolean());
+        assertFalse(event.isCancelled());
+    }
+
+    @Test
+    public void testItemOnStaffClickSurvivalModeCancelsEvent() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        ShopToolFactory toolFactory = mock(ShopToolFactory.class);
+        ToolsConfig toolsConfig = mock(ToolsConfig.class);
+        when(configManager.getToolsConfig()).thenReturn(toolsConfig);
+        when(toolsConfig.getCursorCooldownSeconds(any())).thenReturn(0.0);
+
+        me.usainsrht.basicshop.listener.ToolListener listener =
+                new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, null);
+
+        Player player = mock(Player.class);
         when(player.getGameMode()).thenReturn(org.bukkit.GameMode.SURVIVAL);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(player.hasPermission("basicshop.tools.staff")).thenReturn(true);
 
-        ItemStack cursorStaff = mock(ItemStack.class);
-        when(toolFactory.getToolType(cursorStaff)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
+        ItemStack cursorItem = mock(ItemStack.class);
+        when(cursorItem.getAmount()).thenReturn(5);
+        when(cursorItem.isEmpty()).thenReturn(false);
+        when(toolFactory.getToolType(cursorItem)).thenReturn(null);
+        when(toolFactory.isShopTool(cursorItem)).thenReturn(false);
 
-        ItemStack inventoryStaff = mock(ItemStack.class);
-        when(toolFactory.getToolType(inventoryStaff)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
+        ItemStack staffSlot = mock(ItemStack.class);
+        when(toolFactory.getToolType(staffSlot)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
 
-        PlayerInventory playerInventory = mock(PlayerInventory.class);
-        when(playerInventory.getContents()).thenReturn(new ItemStack[]{inventoryStaff});
-        when(player.getInventory()).thenReturn(playerInventory);
+        Inventory inventory = mock(Inventory.class);
+        org.bukkit.inventory.BlockInventoryHolder holder = mock(org.bukkit.inventory.BlockInventoryHolder.class);
+        when(inventory.getHolder()).thenReturn(holder);
 
         org.bukkit.inventory.InventoryView view = mock(org.bukkit.inventory.InventoryView.class);
-        when(view.getPlayer()).thenReturn(player);
-        when(view.getCursor()).thenReturn(cursorStaff);
+        when(view.getTopInventory()).thenReturn(inventory);
 
-        org.bukkit.event.inventory.InventoryCloseEvent event =
-                new org.bukkit.event.inventory.InventoryCloseEvent(view);
+        org.bukkit.event.inventory.InventoryClickEvent event = mock(org.bukkit.event.inventory.InventoryClickEvent.class);
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getCursor()).thenReturn(cursorItem);
+        when(event.getCurrentItem()).thenReturn(staffSlot);
+        when(event.getClickedInventory()).thenReturn(inventory);
+        when(event.getView()).thenReturn(view);
+        when(event.getClick()).thenReturn(ClickType.LEFT);
 
-        listener.onInventoryClose(event);
+        space.arim.morepaperlib.MorePaperLib morePaperLib = mock(space.arim.morepaperlib.MorePaperLib.class, RETURNS_DEEP_STUBS);
+        when(morePaperLib.scheduling().entitySpecificScheduler(player).run(any(Runnable.class), any())).thenReturn(null);
 
-        verify(view, never()).setCursor(null);
-        verify(player, never()).setItemOnCursor(null);
+        me.usainsrht.basicshop.listener.ToolListener listenerWithPaper =
+                new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, morePaperLib);
+
+        listenerWithPaper.onStaffCursorClick(event);
+
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    public void testSellCursorRegularItem() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        MainConfig mainConfig = mock(MainConfig.class);
+        when(configManager.getMainConfig()).thenReturn(mainConfig);
+        when(mainConfig.isSellingEnabled()).thenReturn(true);
+        when(configManager.getMessagesConfig()).thenReturn(mock(me.usainsrht.basicshop.config.MessagesConfig.class));
+
+        EconomyProvider economy = mock(EconomyProvider.class);
+        when(economy.isAvailable()).thenReturn(true);
+
+        Player player = mock(Player.class);
+        when(player.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(player.getName()).thenReturn("Tester");
+
+        ItemStack stack = mock(ItemStack.class);
+        when(stack.getType()).thenReturn(Material.DIAMOND);
+        when(stack.getAmount()).thenReturn(5);
+        when(player.getItemOnCursor()).thenReturn(stack);
+
+        ShopItem item = mock(ShopItem.class);
+        when(item.getId()).thenReturn("diamond");
+        when(item.getMaterial()).thenReturn(Material.DIAMOND);
+        when(item.getSellPrice()).thenReturn(OptionalDouble.of(10.0));
+
+        ShopCategory category = mock(ShopCategory.class);
+        when(category.getItems()).thenReturn(List.of(item));
+        when(configManager.getCategories()).thenReturn(List.of(category));
+
+        ShopAPIImpl shopAPI = new ShopAPIImpl(configManager, economy, null, null);
+        ShopAPI.QuickSellResult result = shopAPI.sellCursor(player, false);
+
+        assertTrue(result.anySuccess());
+        assertEquals(5, result.totalAmount());
+        assertEquals(50.0, result.totalEarned());
+        verify(economy).deposit(player, 50.0);
+        verify(player).setItemOnCursor(null);
     }
 }

@@ -38,7 +38,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.BlockInventoryHolder;
@@ -51,6 +50,7 @@ import space.arim.morepaperlib.MorePaperLib;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -505,16 +505,19 @@ public final class ToolListener implements Listener {
     private boolean isRealTopInventory(Inventory topInv) {
         if (topInv == null)
             return false;
-        InventoryType type = topInv.getType();
-        if (type == InventoryType.CRAFTING || type == InventoryType.ENDER_CHEST) {
-            return true;
-        }
         InventoryHolder holder = topInv.getHolder();
         if (holder instanceof BlockInventoryHolder || holder instanceof DoubleChest) {
             return true;
         }
         if (holder instanceof org.bukkit.entity.Entity) {
             return true;
+        }
+        try {
+            InventoryType type = topInv.getType();
+            if (type == InventoryType.CRAFTING || type == InventoryType.ENDER_CHEST) {
+                return true;
+            }
+        } catch (Throwable ignored) {
         }
         return false;
     }
@@ -524,8 +527,18 @@ public final class ToolListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
 
+        if (player.getGameMode() == GameMode.CREATIVE)
+            return;
+
         ItemStack cursor = event.getCursor();
-        if (toolFactory.getToolType(cursor) != ShopToolType.MONEY_STAFF)
+        ItemStack current = event.getCurrentItem();
+
+        boolean staffOnCursor = toolFactory.getToolType(cursor) == ShopToolType.MONEY_STAFF;
+        boolean staffInSlot = toolFactory.getToolType(current) == ShopToolType.MONEY_STAFF;
+
+        if (!staffOnCursor && !staffInSlot)
+            return;
+        if (staffOnCursor && staffInSlot)
             return;
 
         Inventory clickedInv = event.getClickedInventory();
@@ -537,10 +550,26 @@ public final class ToolListener implements Listener {
             return;
 
         // Disallow selling from the 2x2 crafting grid or crafting result slot
-        if (clickedInv.getType() == InventoryType.CRAFTING)
-            return;
+        try {
+            if (clickedInv.getType() == InventoryType.CRAFTING)
+                return;
+        } catch (Throwable ignored) {
+        }
 
-        ItemStack current = event.getCurrentItem();
+        if (staffOnCursor) {
+            handleStaffOnCursorClick(event, player, cursor, current, clickedInv);
+        } else {
+            handleItemOnStaffClick(event, player, cursor, current, clickedInv);
+        }
+    }
+
+    private void handleStaffOnCursorClick(
+            InventoryClickEvent event,
+            Player player,
+            ItemStack cursor,
+            ItemStack current,
+            Inventory clickedInv
+    ) {
         if (current == null || current.getAmount() <= 0 || current.isEmpty())
             return;
 
@@ -549,18 +578,14 @@ public final class ToolListener implements Listener {
         // Cancel the click event immediately so vanilla never swaps or moves items
         event.setCancelled(true);
 
-        if (toolFactory.isShopTool(current)) {
-            morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> restoreCursor(player, staff), null);
+        if (toolFactory.isShopTool(current))
             return;
-        }
 
-        if (isRidingRestricted(player, ShopToolType.MONEY_STAFF)) {
-            morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> restoreCursor(player, staff), null);
+        if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
             return;
-        }
+
         if (!player.hasPermission("basicshop.tools.staff")) {
             configManager.getMessagesConfig().send(player, "no-permission");
-            morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> restoreCursor(player, staff), null);
             return;
         }
 
@@ -568,25 +593,19 @@ public final class ToolListener implements Listener {
         double cdSeconds = configManager.getToolsConfig().getCursorCooldownSeconds(ShopToolType.MONEY_STAFF);
         long cdMillis = Math.round(cdSeconds * 1000.0);
         Long lastClick = cursorCooldowns.get(player.getUniqueId());
-        if (lastClick != null && (now - lastClick) < cdMillis) {
-            morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> restoreCursor(player, staff), null);
+        if (lastClick != null && (now - lastClick) < cdMillis)
             return;
-        }
         cursorCooldowns.put(player.getUniqueId(), now);
 
         ClickType clickType = event.getClick();
-        if (!clickType.isLeftClick() && !clickType.isRightClick()) {
-            morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> restoreCursor(player, staff), null);
+        if (!clickType.isLeftClick() && !clickType.isRightClick())
             return;
-        }
 
         MoneyStaffCursorSellEvent cursorEvent = new MoneyStaffCursorSellEvent(
                 player, cursor, clickedInv, event.getSlot(), clickType, current, true);
         Bukkit.getPluginManager().callEvent(cursorEvent);
-        if (cursorEvent.isCancelled()) {
-            morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> restoreCursor(player, staff), null);
+        if (cursorEvent.isCancelled())
             return;
-        }
 
         int slot = event.getSlot();
         ItemStack targetItem = current.clone();
@@ -595,6 +614,58 @@ public final class ToolListener implements Listener {
         // Defer inventory mutation to the next tick so the cancellation completes cleanly
         morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
             executeDeferredCursorSell(player, clickedInv, slot, clickType, targetItem, isContainer, staff);
+        }, null);
+    }
+
+    private void handleItemOnStaffClick(
+            InventoryClickEvent event,
+            Player player,
+            ItemStack cursor,
+            ItemStack current,
+            Inventory clickedInv
+    ) {
+        if (cursor == null || cursor.getAmount() <= 0 || cursor.isEmpty())
+            return;
+
+        // Cancel the click event immediately so vanilla never swaps or moves items
+        event.setCancelled(true);
+
+        if (toolFactory.isShopTool(cursor))
+            return;
+
+        if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
+            return;
+
+        if (!player.hasPermission("basicshop.tools.staff")) {
+            configManager.getMessagesConfig().send(player, "no-permission");
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        double cdSeconds = configManager.getToolsConfig().getCursorCooldownSeconds(ShopToolType.MONEY_STAFF);
+        long cdMillis = Math.round(cdSeconds * 1000.0);
+        Long lastClick = cursorCooldowns.get(player.getUniqueId());
+        if (lastClick != null && (now - lastClick) < cdMillis)
+            return;
+        cursorCooldowns.put(player.getUniqueId(), now);
+
+        ClickType clickType = event.getClick();
+        if (!clickType.isLeftClick() && !clickType.isRightClick())
+            return;
+
+        MoneyStaffCursorSellEvent cursorEvent = new MoneyStaffCursorSellEvent(
+                player, current, clickedInv, event.getSlot(), clickType, cursor, true);
+        Bukkit.getPluginManager().callEvent(cursorEvent);
+        if (cursorEvent.isCancelled())
+            return;
+
+        int slot = event.getSlot();
+        ItemStack staffItem = current.clone();
+        ItemStack targetCursor = cursor.clone();
+        boolean isContainer = ShopAPIImpl.isContainerItem(cursor);
+
+        morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+            executeDeferredItemOnStaffSell(player, clickedInv, slot, clickType, targetCursor, isContainer, staffItem);
         }, null);
     }
 
@@ -670,41 +741,95 @@ public final class ToolListener implements Listener {
         if (!player.isOnline())
             return;
         player.setItemOnCursor(staff);
-        try {
-            if (player.getOpenInventory() != null) {
-                player.getOpenInventory().setCursor(staff);
-            }
-        } catch (Throwable ignored) {
-        }
         player.updateInventory();
     }
 
-    @EventHandler(priority = EventPriority.LOW)
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player player))
+    private void executeDeferredItemOnStaffSell(
+            Player player,
+            Inventory clickedInv,
+            int slot,
+            ClickType clickType,
+            ItemStack targetCursor,
+            boolean isContainer,
+            ItemStack staffItem
+    ) {
+        if (!player.isOnline())
             return;
 
-        if (player.getGameMode() != GameMode.CREATIVE)
-            return;
-
-        ItemStack cursor = event.getView().getCursor();
-        ShopToolType toolType = toolFactory.getToolType(cursor);
-        if (toolType == null)
-            return;
-
-        // In Creative mode, picking up an item clones it to the cursor while leaving the
-        // original item in the inventory slot. When closing the inventory, vanilla would
-        // then deposit the carried clone into the first empty slot, duplicating the tool.
-        // If the player's inventory already contains this tool, clear the cursor to prevent duplication.
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (toolFactory.getToolType(item) == toolType) {
-                try {
-                    event.getView().setCursor(null);
-                } catch (Throwable ignored) {
-                }
-                player.setItemOnCursor(null);
+        // If it's a world block container, verify the block is still valid (not destroyed by TNT/mining)
+        if (clickedInv.getHolder() instanceof BlockInventoryHolder bih) {
+            if (!(bih.getBlock().getState() instanceof Container)) {
                 return;
             }
+        } else if (clickedInv.getHolder() instanceof DoubleChest dc) {
+            if (!(dc.getLocation().getBlock().getState() instanceof Container)) {
+                return;
+            }
+        }
+
+        ItemStack currentSlotItem = clickedInv.getItem(slot);
+        if (currentSlotItem == null || currentSlotItem.isEmpty() || !currentSlotItem.isSimilar(staffItem)) {
+            return;
+        }
+
+        ItemStack currentCursor = player.getItemOnCursor();
+        if (currentCursor == null || currentCursor.isEmpty() || !currentCursor.isSimilar(targetCursor)) {
+            return;
+        }
+
+        Map<Material, long[]> totals = new LinkedHashMap<>();
+
+        if (clickType.isLeftClick()) {
+            // Left click: sell the cursor slot
+            ShopAPI.QuickSellResult result = shopAPI.sellCursor(player, isContainer);
+            player.updateInventory();
+            for (ShopAPI.SoldMaterialLine line : result.lines()) {
+                long[] entry = totals.computeIfAbsent(line.material(), m -> new long[2]);
+                entry[0] += line.amount();
+                entry[1] += Math.round(line.earned() * 100);
+            }
+        } else {
+            // Right click: sell matching items in the inventory AND the item on the cursor
+            Set<Material> materials;
+            if (isContainer) {
+                materials = ShopAPIImpl.getContainedMaterials(targetCursor);
+            } else {
+                materials = Set.of(targetCursor.getType());
+            }
+
+            if (!materials.isEmpty()) {
+                ShopAPI.QuickSellResult invResult = shopAPI.sellMatchingItems(player, clickedInv, materials, true);
+                for (ShopAPI.SoldMaterialLine line : invResult.lines()) {
+                    long[] entry = totals.computeIfAbsent(line.material(), m -> new long[2]);
+                    entry[0] += line.amount();
+                    entry[1] += Math.round(line.earned() * 100);
+                }
+            }
+
+            ShopAPI.QuickSellResult cursorResult = shopAPI.sellCursor(player, isContainer);
+            player.updateInventory();
+            for (ShopAPI.SoldMaterialLine line : cursorResult.lines()) {
+                long[] entry = totals.computeIfAbsent(line.material(), m -> new long[2]);
+                entry[0] += line.amount();
+                entry[1] += Math.round(line.earned() * 100);
+            }
+        }
+
+        if (totals.isEmpty()) {
+            configManager.getMessagesConfig().send(player, "tool-staff-no-items");
+            return;
+        }
+
+        for (Map.Entry<Material, long[]> entry : totals.entrySet()) {
+            int amt = (int) entry.getValue()[0];
+            double earned = entry.getValue()[1] / 100.0;
+            ItemStack lineStack = new ItemStack(entry.getKey(), 1);
+            Component itemTextComp = ItemText.format(lineStack, b -> b.amount(amt));
+
+            configManager.getMessagesConfig().send(player, "tool-staff-line",
+                    Placeholder.unparsed("amount", String.valueOf(amt)),
+                    Placeholder.component("item", itemTextComp),
+                    Placeholder.unparsed("price", configManager.getMainConfig().formatPrice(earned)));
         }
     }
 

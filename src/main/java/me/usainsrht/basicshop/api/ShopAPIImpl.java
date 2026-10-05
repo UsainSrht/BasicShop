@@ -541,6 +541,42 @@ public final class ShopAPIImpl implements ShopAPI {
     }
 
     @Override
+    public QuickSellResult sellCursor(Player player, boolean recursive) {
+        if (!economy.isAvailable())                return QuickSellResult.NOTHING;
+        if (!configManager.getMainConfig().isSellingEnabled()) return QuickSellResult.NOTHING;
+
+        ItemStack stack = player.getItemOnCursor();
+        if (isAirOrEmpty(stack)) return QuickSellResult.NOTHING;
+
+        ShopPreBulkSellEvent preBulk = new ShopPreBulkSellEvent(player, BulkSellSource.STAFF_CURSOR, null);
+        Bukkit.getPluginManager().callEvent(preBulk);
+        if (preBulk.isCancelled()) return QuickSellResult.NOTHING;
+
+        Map<Material, long[]> totals = new LinkedHashMap<>();
+
+        if (isContainerItem(stack)) {
+            if (recursive) {
+                boolean sold = sellFromContainerItem(player, stack, totals, null, 1);
+                if (sold) {
+                    player.setItemOnCursor(stack);
+                }
+            }
+        } else {
+            int sold = executeSingleSale(player, stack, totals);
+            if (sold > 0) {
+                if (sold >= stack.getAmount()) {
+                    player.setItemOnCursor(null);
+                } else {
+                    stack.setAmount(stack.getAmount() - sold);
+                    player.setItemOnCursor(stack);
+                }
+            }
+        }
+
+        return finalizeBulkSell(player, BulkSellSource.STAFF_CURSOR, totals);
+    }
+
+    @Override
     public QuickSellResult sellMatchingItems(Player player, Inventory inventory, Set<Material> materials, boolean includeContainers) {
         if (!economy.isAvailable())                return QuickSellResult.NOTHING;
         if (!configManager.getMainConfig().isSellingEnabled()) return QuickSellResult.NOTHING;
