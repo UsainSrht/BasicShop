@@ -668,6 +668,8 @@ public class ShopEventsTest {
         ToolsConfig toolsConfig = mock(ToolsConfig.class);
         when(configManager.getToolsConfig()).thenReturn(toolsConfig);
         when(toolsConfig.getCursorCooldownSeconds(any())).thenReturn(0.0);
+        when(toolsConfig.isEnabled(any())).thenReturn(true);
+        when(toolsConfig.isCursorActionsEnabled(any())).thenReturn(true);
 
         me.usainsrht.basicshop.listener.ToolListener listener =
                 new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, null);
@@ -708,6 +710,87 @@ public class ShopEventsTest {
                 new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, morePaperLib);
 
         listenerWithPaper.onStaffCursorClick(event);
+
+        verify(event).setCancelled(true);
+    }
+
+    @Test
+    public void testStaffCursorClickDisabledCursorActionsExitsEarlyWithoutCancellingEvent() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        ShopToolFactory toolFactory = mock(ShopToolFactory.class);
+        ToolsConfig toolsConfig = mock(ToolsConfig.class);
+        when(configManager.getToolsConfig()).thenReturn(toolsConfig);
+        when(toolsConfig.isEnabled(any())).thenReturn(true);
+        when(toolsConfig.isCursorActionsEnabled(any())).thenReturn(false);
+
+        me.usainsrht.basicshop.listener.ToolListener listener =
+                new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, null);
+
+        Player player = mock(Player.class);
+        when(player.getGameMode()).thenReturn(org.bukkit.GameMode.SURVIVAL);
+
+        ItemStack cursorStaff = mock(ItemStack.class);
+        when(toolFactory.getToolType(cursorStaff)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
+
+        org.bukkit.event.inventory.InventoryClickEvent event = mock(org.bukkit.event.inventory.InventoryClickEvent.class);
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getCursor()).thenReturn(cursorStaff);
+        when(event.isCancelled()).thenReturn(false);
+
+        listener.onStaffCursorClick(event);
+
+        verify(event, never()).setCancelled(anyBoolean());
+        assertFalse(event.isCancelled());
+    }
+
+    @Test
+    public void testStaffCursorClickDisabledToolExitsEarlyWithoutCancellingEvent() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        ShopToolFactory toolFactory = mock(ShopToolFactory.class);
+        ToolsConfig toolsConfig = mock(ToolsConfig.class);
+        when(configManager.getToolsConfig()).thenReturn(toolsConfig);
+        when(toolsConfig.isEnabled(any())).thenReturn(false);
+        when(toolsConfig.isCursorActionsEnabled(any())).thenReturn(true);
+
+        me.usainsrht.basicshop.listener.ToolListener listener =
+                new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, null);
+
+        Player player = mock(Player.class);
+        when(player.getGameMode()).thenReturn(org.bukkit.GameMode.SURVIVAL);
+
+        ItemStack cursorStaff = mock(ItemStack.class);
+        when(toolFactory.getToolType(cursorStaff)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
+
+        org.bukkit.event.inventory.InventoryClickEvent event = mock(org.bukkit.event.inventory.InventoryClickEvent.class);
+        when(event.getWhoClicked()).thenReturn(player);
+        when(event.getCursor()).thenReturn(cursorStaff);
+        when(event.isCancelled()).thenReturn(false);
+
+        listener.onStaffCursorClick(event);
+
+        verify(event, never()).setCancelled(anyBoolean());
+        assertFalse(event.isCancelled());
+    }
+
+    @Test
+    public void testBlockPlaceDisabledToolStillCancelsEvent() {
+        ConfigManager configManager = mock(ConfigManager.class);
+        ShopToolFactory toolFactory = mock(ShopToolFactory.class);
+        ToolsConfig toolsConfig = mock(ToolsConfig.class);
+        when(configManager.getToolsConfig()).thenReturn(toolsConfig);
+        // Even when toolsConfig says disabled:
+        when(toolsConfig.isEnabled(any())).thenReturn(false);
+
+        me.usainsrht.basicshop.listener.ToolListener listener =
+                new me.usainsrht.basicshop.listener.ToolListener(configManager, null, toolFactory, null);
+
+        ItemStack staffItem = mock(ItemStack.class);
+        when(toolFactory.getToolType(staffItem)).thenReturn(me.usainsrht.basicshop.api.model.ShopToolType.MONEY_STAFF);
+
+        org.bukkit.event.block.BlockPlaceEvent event = mock(org.bukkit.event.block.BlockPlaceEvent.class);
+        when(event.getItemInHand()).thenReturn(staffItem);
+
+        listener.onBlockPlace(event);
 
         verify(event).setCancelled(true);
     }

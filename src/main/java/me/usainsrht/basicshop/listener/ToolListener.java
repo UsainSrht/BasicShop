@@ -130,6 +130,18 @@ public final class ToolListener implements Listener {
         this(configManager, shopAPI, toolFactory, morePaperLib, new me.usainsrht.basicshop.bazaar.NoOpBazaarService());
     }
 
+    private boolean isToolEnabled(ShopToolType type) {
+        if (type == null) return false;
+        ToolsConfig toolsConfig = configManager.getToolsConfig();
+        return toolsConfig == null || toolsConfig.isEnabled(type);
+    }
+
+    private boolean isCursorActionsEnabled(ShopToolType type) {
+        if (type == null) return false;
+        ToolsConfig toolsConfig = configManager.getToolsConfig();
+        return toolsConfig == null || toolsConfig.isCursorActionsEnabled(type);
+    }
+
     private boolean isRidingRestricted(Player player, ShopToolType type) {
         if (!player.isInsideVehicle()) {
             return false;
@@ -144,6 +156,8 @@ public final class ToolListener implements Listener {
         ItemStack tool = player.getInventory().getItemInMainHand();
         if (toolFactory.getToolType(tool) != ShopToolType.MONEY_HOE)
             return;
+        if (!isToolEnabled(ShopToolType.MONEY_HOE))
+            return;
         if (isRidingRestricted(player, ShopToolType.MONEY_HOE)) {
             event.setCancelled(true);
         }
@@ -156,6 +170,8 @@ public final class ToolListener implements Listener {
         ItemStack item = event.getItem();
         ShopToolType type = toolFactory.getToolType(item);
         if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF || type == ShopToolType.BAZAAR_STAFF) {
+            if (!isToolEnabled(type))
+                return;
             if (isRidingRestricted(event.getPlayer(), type)) {
                 event.setCancelled(true);
             }
@@ -164,9 +180,14 @@ public final class ToolListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
-        ShopToolType type = toolFactory.getToolType(event.getItemInHand());
-        // hoe tilling also fires blockplaceevent
-        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF || type == ShopToolType.BAZAAR_STAFF) {
+        ItemStack item = event.getItemInHand();
+        ShopToolType type = toolFactory.getToolType(item);
+        if (type == null)
+            return;
+        // Never allow placing shop tools on the ground (staves or tools configured with placeable blocks),
+        // even when the tool is disabled in config.
+        if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF || type == ShopToolType.BAZAAR_STAFF
+                || item.getType().isBlock()) {
             event.setCancelled(true);
         }
     }
@@ -185,6 +206,9 @@ public final class ToolListener implements Listener {
             return;
 
         event.setCancelled(true);
+
+        if (!isToolEnabled(ShopToolType.MONEY_STAFF))
+            return;
 
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
@@ -231,6 +255,9 @@ public final class ToolListener implements Listener {
             return;
 
         event.setCancelled(true);
+
+        if (!isToolEnabled(ShopToolType.SORTING_STAFF))
+            return;
 
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.SORTING_STAFF))
@@ -283,10 +310,13 @@ public final class ToolListener implements Listener {
         if (toolFactory.getToolType(item) != ShopToolType.BAZAAR_STAFF)
             return;
 
-        if (bazaarService == null || !bazaarService.isAvailable())
+        event.setCancelled(true);
+
+        if (!isToolEnabled(ShopToolType.BAZAAR_STAFF))
             return;
 
-        event.setCancelled(true);
+        if (bazaarService == null || !bazaarService.isAvailable())
+            return;
 
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
@@ -367,6 +397,9 @@ public final class ToolListener implements Listener {
         if (toolFactory.getToolType(item) != ShopToolType.MONEY_STAFF)
             return;
 
+        if (!isToolEnabled(ShopToolType.MONEY_STAFF))
+            return;
+
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
             return;
@@ -410,6 +443,9 @@ public final class ToolListener implements Listener {
             item = event.getPlayer().getInventory().getItemInMainHand();
         }
         if (toolFactory.getToolType(item) != ShopToolType.BAZAAR_STAFF)
+            return;
+
+        if (!isToolEnabled(ShopToolType.BAZAAR_STAFF))
             return;
 
         if (bazaarService == null || !bazaarService.isAvailable())
@@ -482,6 +518,9 @@ public final class ToolListener implements Listener {
         if (toolFactory.getToolType(item) != ShopToolType.MONEY_HOE)
             return;
 
+        if (!isToolEnabled(ShopToolType.MONEY_HOE))
+            return;
+
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.MONEY_HOE))
             return;
@@ -513,6 +552,10 @@ public final class ToolListener implements Listener {
         ItemStack tool = player.getInventory().getItemInMainHand();
         if (toolFactory.getToolType(tool) != ShopToolType.MONEY_HOE)
             return;
+
+        if (!isToolEnabled(ShopToolType.MONEY_HOE))
+            return;
+
         if (!player.hasPermission("basicshop.tools.hoe"))
             return;
 
@@ -672,6 +715,9 @@ public final class ToolListener implements Listener {
         if (!staffOnCursor && !staffInSlot)
             return;
         if (staffOnCursor && staffInSlot)
+            return;
+
+        if (!isToolEnabled(ShopToolType.MONEY_STAFF) || !isCursorActionsEnabled(ShopToolType.MONEY_STAFF))
             return;
 
         Inventory clickedInv = event.getClickedInventory();
@@ -986,6 +1032,9 @@ public final class ToolListener implements Listener {
         if (!staffOnCursor && !staffInSlot)
             return;
         if (staffOnCursor && staffInSlot)
+            return;
+
+        if (!isToolEnabled(ShopToolType.BAZAAR_STAFF) || !isCursorActionsEnabled(ShopToolType.BAZAAR_STAFF))
             return;
 
         Inventory clickedInv = event.getClickedInventory();

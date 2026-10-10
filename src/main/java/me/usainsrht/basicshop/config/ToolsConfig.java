@@ -28,18 +28,29 @@ public final class ToolsConfig {
             ItemStack itemStack,
             boolean usableWhenRiding,
             double cursorCooldownSeconds,
-            boolean useNativeBazaarMessages
+            boolean useNativeBazaarMessages,
+            boolean enabled,
+            boolean cursorActionsEnabled
     ) {
+        public ToolDefinition(
+                ItemStack itemStack,
+                boolean usableWhenRiding,
+                double cursorCooldownSeconds,
+                boolean useNativeBazaarMessages
+        ) {
+            this(itemStack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages, true, true);
+        }
+
         public ToolDefinition(ItemStack itemStack, boolean usableWhenRiding, double cursorCooldownSeconds) {
-            this(itemStack, usableWhenRiding, cursorCooldownSeconds, true);
+            this(itemStack, usableWhenRiding, cursorCooldownSeconds, true, true, true);
         }
 
         public ToolDefinition(ItemStack itemStack, boolean usableWhenRiding) {
-            this(itemStack, usableWhenRiding, 0.25, true);
+            this(itemStack, usableWhenRiding, 0.25, true, true, true);
         }
 
         public ToolDefinition(ItemStack itemStack) {
-            this(itemStack, false, 0.25, true);
+            this(itemStack, false, 0.25, true, true, true);
         }
     }
 
@@ -55,6 +66,8 @@ public final class ToolsConfig {
             boolean usableWhenRiding = false;
             double cursorCooldownSeconds = 0.25;
             boolean useNativeBazaarMessages = true;
+            boolean enabled = true;
+            boolean cursorActionsEnabled = true;
             if (sub != null) {
                 try {
                     stack = YamlItem.parse(sub);
@@ -64,6 +77,8 @@ public final class ToolsConfig {
                 usableWhenRiding = sub.getBoolean("usable-when-riding", false);
                 cursorCooldownSeconds = sub.getDouble("cursor-cooldown-seconds", 0.25);
                 useNativeBazaarMessages = sub.getBoolean("use-native-bazaar-messages", true);
+                enabled = sub.getBoolean("enabled", true);
+                cursorActionsEnabled = sub.getBoolean("cursor-actions-enabled", sub.getBoolean("cursor-enabled", true));
             }
             if (stack == null || stack.getType().isAir()) {
                 try {
@@ -78,7 +93,7 @@ public final class ToolsConfig {
                 } catch (Throwable ignored) {}
             }
 
-            parsed.put(type, new ToolDefinition(stack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages));
+            parsed.put(type, new ToolDefinition(stack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages, enabled, cursorActionsEnabled));
         }
 
         this.tools = Collections.unmodifiableMap(parsed);
@@ -95,6 +110,16 @@ public final class ToolsConfig {
             def = new ToolDefinition(fallback, false);
         }
         return def;
+    }
+
+    public boolean isEnabled(ShopToolType type) {
+        if (type == null) return false;
+        return get(type).enabled();
+    }
+
+    public boolean isCursorActionsEnabled(ShopToolType type) {
+        if (type == null) return false;
+        return get(type).cursorActionsEnabled();
     }
 
     public boolean isUsableWhenRiding(ShopToolType type) {

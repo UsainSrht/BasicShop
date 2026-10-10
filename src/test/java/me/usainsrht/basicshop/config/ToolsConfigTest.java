@@ -64,4 +64,68 @@ public class ToolsConfigTest {
         ToolsConfig customConfig = new ToolsConfig(config);
         assertFalse(customConfig.isUseNativeBazaarMessages(ShopToolType.BAZAAR_STAFF));
     }
+
+    @Test
+    public void testEnabledDefaultsToTrueForAllTools() {
+        YamlConfiguration config = new YamlConfiguration();
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+
+        for (ShopToolType type : ShopToolType.values()) {
+            assertTrue(toolsConfig.isEnabled(type),
+                    "Tool " + type.getId() + " should default to enabled = true");
+        }
+    }
+
+    @Test
+    public void testEnabledConfigurablePerTool() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("tools.money_staff.enabled", false);
+        config.set("tools.money_hoe.enabled", true);
+        config.set("tools.sorting_staff.enabled", false);
+        config.set("tools.bazaar_staff.enabled", false);
+
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+
+        assertFalse(toolsConfig.isEnabled(ShopToolType.MONEY_STAFF));
+        assertTrue(toolsConfig.isEnabled(ShopToolType.MONEY_HOE));
+        assertFalse(toolsConfig.isEnabled(ShopToolType.SORTING_STAFF));
+        assertFalse(toolsConfig.isEnabled(ShopToolType.BAZAAR_STAFF));
+    }
+
+    @Test
+    public void testCursorActionsEnabledDefaultsToTrue() {
+        YamlConfiguration config = new YamlConfiguration();
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+
+        assertTrue(toolsConfig.isCursorActionsEnabled(ShopToolType.MONEY_STAFF));
+        assertTrue(toolsConfig.isCursorActionsEnabled(ShopToolType.BAZAAR_STAFF));
+    }
+
+    @Test
+    public void testCursorActionsEnabledConfigurable() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("tools.money_staff.cursor-actions-enabled", false);
+        config.set("tools.bazaar_staff.cursor-actions-enabled", true);
+
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+
+        assertFalse(toolsConfig.isCursorActionsEnabled(ShopToolType.MONEY_STAFF));
+        assertTrue(toolsConfig.isCursorActionsEnabled(ShopToolType.BAZAAR_STAFF));
+    }
+
+    @Test
+    public void testHotReloadUpdatesEnabledAndCursorActions() {
+        YamlConfiguration config = new YamlConfiguration();
+        ToolsConfig initial = new ToolsConfig(config);
+        assertTrue(initial.isEnabled(ShopToolType.MONEY_STAFF));
+        assertTrue(initial.isCursorActionsEnabled(ShopToolType.MONEY_STAFF));
+
+        // Simulate config edit and reload
+        config.set("tools.money_staff.enabled", false);
+        config.set("tools.money_staff.cursor-actions-enabled", false);
+        ToolsConfig reloaded = new ToolsConfig(config);
+
+        assertFalse(reloaded.isEnabled(ShopToolType.MONEY_STAFF));
+        assertFalse(reloaded.isCursorActionsEnabled(ShopToolType.MONEY_STAFF));
+    }
 }

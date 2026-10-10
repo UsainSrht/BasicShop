@@ -121,7 +121,9 @@ public final class BasicBazaarHook implements BazaarService {
                 if (!(currentState instanceof Container currentContainer)) return;
 
                 Inventory inv = currentContainer.getInventory();
-                Map<Listing, Integer> restocked = restockInventory(player, inv, candidateListings, recursive, 1);
+                RestockSession session = new RestockSession(player, candidateListings, bazaar);
+                restockInventory(session, inv, recursive, 1);
+                Map<Listing, Integer> restocked = session.finish();
                 sendListingFeedback(player, restocked, useNativeMessages);
             });
         });
@@ -167,7 +169,9 @@ public final class BasicBazaarHook implements BazaarService {
                 if (!(currentState instanceof Container currentContainer)) return;
 
                 Inventory inv = currentContainer.getInventory();
-                List<DeliverySummary> deliveries = deliverFromInventory(player, inv, validOrders, recursive, 1);
+                DeliverySession session = new DeliverySession(player, validOrders, bazaar, morePaperLib);
+                deliverInventory(session, inv, recursive, 1);
+                List<DeliverySummary> deliveries = session.finish();
                 sendOrderFeedback(player, deliveries, useNativeMessages);
             });
         });
@@ -239,30 +243,31 @@ public final class BasicBazaarHook implements BazaarService {
                     return;
                 }
 
-                Map<Listing, Integer> restocked = new LinkedHashMap<>();
+                RestockSession session = new RestockSession(player, candidateListings, bazaar);
 
                 if (clickType.isLeftClick()) {
                     // Left-click: single slot
                     if (isContainer) {
                         if (recursive) {
-                            restockContainerItem(player, current, candidateListings, true, 1, restocked);
+                            restockContainerItem(session, current, true, 1);
                             clickedInv.setItem(slot, current);
                         }
                     } else {
-                        restockSingleSlot(player, clickedInv, slot, current, candidateListings, restocked);
+                        restockSingleSlot(session, clickedInv, slot, current);
                     }
                 } else {
                     // Right-click: all matching items
                     if (isContainer) {
                         Set<Material> materials = getContainedMaterials(current);
                         if (!materials.isEmpty()) {
-                            restockMatching(player, clickedInv, materials, candidateListings, true, restocked);
+                            restockMatchingMaterials(session, clickedInv, materials, true);
                         }
                     } else {
-                        restockMatching(player, clickedInv, Set.of(targetItem.getType()), candidateListings, false, restocked);
+                        restockMatchingSimilar(session, clickedInv, targetItem, recursive);
                     }
                 }
 
+                Map<Listing, Integer> restocked = session.finish();
                 restoreCursor(player, staff);
                 sendListingFeedback(player, restocked, useNativeMessages);
             }, null);
@@ -314,30 +319,31 @@ public final class BasicBazaarHook implements BazaarService {
                     return;
                 }
 
-                List<DeliverySummary> deliveries = new ArrayList<>();
+                DeliverySession session = new DeliverySession(player, validOrders, bazaar, morePaperLib);
 
                 if (clickType.isLeftClick()) {
                     // Left-click: single slot
                     if (isContainer) {
                         if (recursive) {
-                            deliverFromContainerItem(player, current, validOrders, true, 1, deliveries);
+                            deliverFromContainerItem(session, current, true, 1);
                             clickedInv.setItem(slot, current);
                         }
                     } else {
-                        deliverSingleSlot(player, clickedInv, slot, current, validOrders, deliveries);
+                        deliverSingleSlot(session, clickedInv, slot, current);
                     }
                 } else {
                     // Right-click: all matching items
                     if (isContainer) {
                         Set<Material> materials = getContainedMaterials(current);
                         if (!materials.isEmpty()) {
-                            deliverMatching(player, clickedInv, materials, validOrders, true, deliveries);
+                            deliverMatchingMaterials(session, clickedInv, materials, true);
                         }
                     } else {
-                        deliverMatching(player, clickedInv, Set.of(targetItem.getType()), validOrders, false, deliveries);
+                        deliverMatchingSimilar(session, clickedInv, targetItem, recursive);
                     }
                 }
 
+                List<DeliverySummary> deliveries = session.finish();
                 restoreCursor(player, staff);
                 sendOrderFeedback(player, deliveries, useNativeMessages);
             }, null);
@@ -402,35 +408,42 @@ public final class BasicBazaarHook implements BazaarService {
                 ItemStack currentCursor = player.getItemOnCursor();
                 if (currentCursor == null || currentCursor.isEmpty() || !currentCursor.isSimilar(targetCursor)) return;
 
-                Map<Listing, Integer> restocked = new LinkedHashMap<>();
+                RestockSession session = new RestockSession(player, candidateListings, bazaar);
 
                 if (clickType.isLeftClick()) {
                     // Left-click: cursor slot only
                     if (isContainer) {
                         if (recursive) {
-                            restockContainerItem(player, currentCursor, candidateListings, true, 1, restocked);
+                            restockContainerItem(session, currentCursor, true, 1);
                             player.setItemOnCursor(currentCursor);
                         }
                     } else {
-                        restockCursorStack(player, currentCursor, candidateListings, restocked);
+                        restockCursorStack(session, player, currentCursor);
                     }
                 } else {
                     // Right-click: matching in inventory AND cursor
                     if (isContainer) {
                         Set<Material> materials = getContainedMaterials(currentCursor);
                         if (!materials.isEmpty()) {
-                            restockMatching(player, clickedInv, materials, candidateListings, true, restocked);
+                            restockMatchingMaterials(session, clickedInv, materials, true);
+                            if (clickedInv != player.getInventory()) {
+                                restockMatchingMaterials(session, player.getInventory(), materials, true);
+                            }
                         }
                         if (recursive) {
-                            restockContainerItem(player, currentCursor, candidateListings, true, 1, restocked);
+                            restockContainerItem(session, currentCursor, true, 1);
                             player.setItemOnCursor(currentCursor);
                         }
                     } else {
-                        restockMatching(player, clickedInv, Set.of(targetCursor.getType()), candidateListings, false, restocked);
-                        restockCursorStack(player, currentCursor, candidateListings, restocked);
+                        restockMatchingSimilar(session, clickedInv, targetCursor, recursive);
+                        if (clickedInv != player.getInventory()) {
+                            restockMatchingSimilar(session, player.getInventory(), targetCursor, recursive);
+                        }
+                        restockCursorStack(session, player, currentCursor);
                     }
                 }
 
+                Map<Listing, Integer> restocked = session.finish();
                 player.updateInventory();
                 sendListingFeedback(player, restocked, useNativeMessages);
             }, null);
@@ -478,35 +491,42 @@ public final class BasicBazaarHook implements BazaarService {
                 ItemStack currentCursor = player.getItemOnCursor();
                 if (currentCursor == null || currentCursor.isEmpty() || !currentCursor.isSimilar(targetCursor)) return;
 
-                List<DeliverySummary> deliveries = new ArrayList<>();
+                DeliverySession session = new DeliverySession(player, validOrders, bazaar, morePaperLib);
 
                 if (clickType.isLeftClick()) {
                     // Left-click: cursor slot only
                     if (isContainer) {
                         if (recursive) {
-                            deliverFromContainerItem(player, currentCursor, validOrders, true, 1, deliveries);
+                            deliverFromContainerItem(session, currentCursor, true, 1);
                             player.setItemOnCursor(currentCursor);
                         }
                     } else {
-                        deliverCursorStack(player, currentCursor, validOrders, deliveries);
+                        deliverCursorStack(session, player, currentCursor);
                     }
                 } else {
                     // Right-click: matching in inventory AND cursor
                     if (isContainer) {
                         Set<Material> materials = getContainedMaterials(currentCursor);
                         if (!materials.isEmpty()) {
-                            deliverMatching(player, clickedInv, materials, validOrders, true, deliveries);
+                            deliverMatchingMaterials(session, clickedInv, materials, true);
+                            if (clickedInv != player.getInventory()) {
+                                deliverMatchingMaterials(session, player.getInventory(), materials, true);
+                            }
                         }
                         if (recursive) {
-                            deliverFromContainerItem(player, currentCursor, validOrders, true, 1, deliveries);
+                            deliverFromContainerItem(session, currentCursor, true, 1);
                             player.setItemOnCursor(currentCursor);
                         }
                     } else {
-                        deliverMatching(player, clickedInv, Set.of(targetCursor.getType()), validOrders, false, deliveries);
-                        deliverCursorStack(player, currentCursor, validOrders, deliveries);
+                        deliverMatchingSimilar(session, clickedInv, targetCursor, recursive);
+                        if (clickedInv != player.getInventory()) {
+                            deliverMatchingSimilar(session, player.getInventory(), targetCursor, recursive);
+                        }
+                        deliverCursorStack(session, player, currentCursor);
                     }
                 }
 
+                List<DeliverySummary> deliveries = session.finish();
                 player.updateInventory();
                 sendOrderFeedback(player, deliveries, useNativeMessages);
             }, null);
@@ -514,24 +534,101 @@ public final class BasicBazaarHook implements BazaarService {
     }
 
     // -------------------------------------------------------------------------
-    // Core Restocking Algorithms
+    // Core Restocking Algorithms & Session
     // -------------------------------------------------------------------------
 
-    private Map<Listing, Integer> restockInventory(
-            Player player,
+    private final class RestockSession {
+        private final Player player;
+        private final List<Listing> candidateListings;
+        private final BasicBazaarPlugin bazaar;
+        private final Map<UUID, Listing> lockedListings = new LinkedHashMap<>();
+        private final Set<UUID> failedListings = new java.util.HashSet<>();
+        private final Map<Listing, Integer> restocked = new LinkedHashMap<>();
+
+        RestockSession(Player player, List<Listing> candidateListings, BasicBazaarPlugin bazaar) {
+            this.player = player;
+            this.candidateListings = candidateListings;
+            this.bazaar = bazaar;
+        }
+
+        public int restockStack(ItemStack stack) {
+            if (isAirOrEmpty(stack) || isShopTool(stack)) return 0;
+
+            Listing matched = null;
+            for (Listing l : candidateListings) {
+                if (l.getItem() != null && stack.isSimilar(l.getItem())) {
+                    matched = l;
+                    break;
+                }
+            }
+            if (matched == null) return 0;
+
+            UUID id = matched.getId();
+            if (failedListings.contains(id)) return 0;
+
+            if (!lockedListings.containsKey(id)) {
+                if (!bazaar.acquireListingLock(id)) {
+                    failedListings.add(id);
+                    return 0;
+                }
+                lockedListings.put(id, matched);
+            }
+
+            int requested = stack.getAmount();
+            BazaarListingStockAddEvent event = new BazaarListingStockAddEvent(player, matched, requested);
+            Bukkit.getPluginManager().callEvent(event);
+            if (event.isCancelled()) {
+                return 0;
+            }
+
+            int toAdd = Math.min(requested, event.getAmount());
+            if (toAdd <= 0) {
+                return 0;
+            }
+
+            restocked.merge(matched, toAdd, Integer::sum);
+            return toAdd;
+        }
+
+        public Map<Listing, Integer> finish() {
+            boolean activateOnStockAdd = bazaar.getConfig().getBoolean("settings.activate-on-stock-add", true);
+
+            for (Map.Entry<UUID, Listing> entry : lockedListings.entrySet()) {
+                UUID id = entry.getKey();
+                Listing listing = entry.getValue();
+                int added = restocked.getOrDefault(listing, 0);
+
+                if (added > 0) {
+                    listing.setStock(listing.getStock() + added);
+                    if (activateOnStockAdd && (listing.isExpired() || listing.getExpiryTime() > 0)) {
+                        listing.setExpiryTime(bazaar.calculateListingExpiryTime());
+                    }
+
+                    bazaar.getStorage().updateListing(listing).whenComplete((v, ex) -> {
+                        bazaar.releaseListingLock(id);
+                    });
+                } else {
+                    bazaar.releaseListingLock(id);
+                }
+            }
+            return restocked;
+        }
+    }
+
+    private void restockInventory(
+            RestockSession session,
             Inventory inv,
-            List<Listing> listings,
             boolean recursive,
             int depth
     ) {
-        Map<Listing, Integer> restocked = new LinkedHashMap<>();
+        if (inv == null) return;
         for (int i = 0; i < inv.getSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (isAirOrEmpty(stack) || isShopTool(stack)) continue;
 
             if (isContainerItem(stack)) {
                 if (recursive && depth <= 5) {
-                    boolean modified = restockContainerItem(player, stack, listings, recursive, depth + 1, restocked);
+                    boolean modified = restockContainerItem(session, stack, recursive, depth + 1);
                     if (modified) {
                         inv.setItem(i, stack);
                     }
@@ -539,26 +636,51 @@ public final class BasicBazaarHook implements BazaarService {
                 continue;
             }
 
-            restockSingleSlot(player, inv, i, stack, listings, restocked);
+            restockSingleSlot(session, inv, i, stack);
         }
-        return restocked;
     }
 
-    private void restockMatching(
-            Player player,
+    private void restockMatchingSimilar(
+            RestockSession session,
             Inventory inv,
-            Set<Material> materials,
-            List<Listing> listings,
-            boolean recursive,
-            Map<Listing, Integer> restocked
+            ItemStack sample,
+            boolean recursive
     ) {
+        if (inv == null || sample == null || sample.isEmpty()) return;
         for (int i = 0; i < inv.getSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (isAirOrEmpty(stack) || isShopTool(stack)) continue;
 
             if (isContainerItem(stack)) {
                 if (recursive) {
-                    boolean modified = restockContainerItem(player, stack, listings, true, 1, restocked);
+                    boolean modified = restockContainerItemSimilar(session, stack, sample, 1);
+                    if (modified) {
+                        inv.setItem(i, stack);
+                    }
+                }
+                continue;
+            }
+
+            if (stack.isSimilar(sample)) {
+                restockSingleSlot(session, inv, i, stack);
+            }
+        }
+    }
+
+    private void restockMatchingMaterials(
+            RestockSession session,
+            Inventory inv,
+            Set<Material> materials,
+            boolean recursive
+    ) {
+        if (inv == null || materials == null || materials.isEmpty()) return;
+        for (int i = 0; i < inv.getSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (isAirOrEmpty(stack) || isShopTool(stack)) continue;
+
+            if (isContainerItem(stack)) {
+                if (recursive) {
+                    boolean modified = restockContainerItem(session, stack, true, 1);
                     if (modified) {
                         inv.setItem(i, stack);
                     }
@@ -567,18 +689,64 @@ public final class BasicBazaarHook implements BazaarService {
             }
 
             if (materials.contains(stack.getType())) {
-                restockSingleSlot(player, inv, i, stack, listings, restocked);
+                restockSingleSlot(session, inv, i, stack);
             }
         }
     }
 
-    private boolean restockContainerItem(
-            Player player,
+    private boolean restockContainerItemSimilar(
+            RestockSession session,
             ItemStack containerStack,
-            List<Listing> listings,
+            ItemStack sample,
+            int depth
+    ) {
+        if (depth > 5 || !isContainerItem(containerStack)) return false;
+        ItemMeta meta = containerStack.getItemMeta();
+        if (!(meta instanceof BlockStateMeta bsm)) return false;
+        if (!(bsm.getBlockState() instanceof Container container)) return false;
+
+        Inventory inner = container.getInventory();
+        boolean anyModified = false;
+
+        for (int i = 0; i < inner.getSize(); i++) {
+            ItemStack innerStack = inner.getItem(i);
+            if (isAirOrEmpty(innerStack) || isShopTool(innerStack)) continue;
+
+            if (isContainerItem(innerStack)) {
+                boolean subModified = restockContainerItemSimilar(session, innerStack, sample, depth + 1);
+                if (subModified) {
+                    inner.setItem(i, innerStack);
+                    anyModified = true;
+                }
+                continue;
+            }
+
+            if (innerStack.isSimilar(sample)) {
+                int added = session.restockStack(innerStack);
+                if (added > 0) {
+                    anyModified = true;
+                    if (added >= innerStack.getAmount()) {
+                        inner.setItem(i, null);
+                    } else {
+                        innerStack.setAmount(innerStack.getAmount() - added);
+                        inner.setItem(i, innerStack);
+                    }
+                }
+            }
+        }
+
+        if (anyModified) {
+            bsm.setBlockState(container);
+            containerStack.setItemMeta(bsm);
+        }
+        return anyModified;
+    }
+
+    private boolean restockContainerItem(
+            RestockSession session,
+            ItemStack containerStack,
             boolean recursive,
-            int depth,
-            Map<Listing, Integer> restocked
+            int depth
     ) {
         if (depth > 5 || !isContainerItem(containerStack)) return false;
         ItemMeta meta = containerStack.getItemMeta();
@@ -594,7 +762,7 @@ public final class BasicBazaarHook implements BazaarService {
 
             if (isContainerItem(innerStack)) {
                 if (recursive) {
-                    boolean subModified = restockContainerItem(player, innerStack, listings, recursive, depth + 1, restocked);
+                    boolean subModified = restockContainerItem(session, innerStack, recursive, depth + 1);
                     if (subModified) {
                         inner.setItem(i, innerStack);
                         anyModified = true;
@@ -603,7 +771,7 @@ public final class BasicBazaarHook implements BazaarService {
                 continue;
             }
 
-            int added = executeRestockOnStack(player, innerStack, listings, restocked);
+            int added = session.restockStack(innerStack);
             if (added > 0) {
                 anyModified = true;
                 if (added >= innerStack.getAmount()) {
@@ -623,14 +791,12 @@ public final class BasicBazaarHook implements BazaarService {
     }
 
     private void restockSingleSlot(
-            Player player,
+            RestockSession session,
             Inventory inv,
             int slot,
-            ItemStack stack,
-            List<Listing> listings,
-            Map<Listing, Integer> restocked
+            ItemStack stack
     ) {
-        int added = executeRestockOnStack(player, stack, listings, restocked);
+        int added = session.restockStack(stack);
         if (added > 0) {
             if (added >= stack.getAmount()) {
                 inv.setItem(slot, null);
@@ -642,12 +808,11 @@ public final class BasicBazaarHook implements BazaarService {
     }
 
     private void restockCursorStack(
+            RestockSession session,
             Player player,
-            ItemStack cursorStack,
-            List<Listing> listings,
-            Map<Listing, Integer> restocked
+            ItemStack cursorStack
     ) {
-        int added = executeRestockOnStack(player, cursorStack, listings, restocked);
+        int added = session.restockStack(cursorStack);
         if (added > 0) {
             if (added >= cursorStack.getAmount()) {
                 player.setItemOnCursor(null);
@@ -658,77 +823,143 @@ public final class BasicBazaarHook implements BazaarService {
         }
     }
 
-    private int executeRestockOnStack(
-            Player player,
-            ItemStack stack,
-            List<Listing> listings,
-            Map<Listing, Integer> restocked
-    ) {
-        if (isAirOrEmpty(stack) || isShopTool(stack)) return 0;
-        Listing matched = null;
-        for (Listing l : listings) {
-            if (l.getItem() != null && stack.isSimilar(l.getItem())) {
-                matched = l;
-                break;
-            }
-        }
-        if (matched == null) return 0;
-
-        BasicBazaarPlugin bazaar = getBazaar();
-        if (!bazaar.acquireListingLock(matched.getId())) {
-            return 0;
-        }
-
-        int requested = stack.getAmount();
-        BazaarListingStockAddEvent event = new BazaarListingStockAddEvent(player, matched, requested);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) {
-            bazaar.releaseListingLock(matched.getId());
-            return 0;
-        }
-
-        int toAdd = Math.min(requested, event.getAmount());
-        if (toAdd <= 0) {
-            bazaar.releaseListingLock(matched.getId());
-            return 0;
-        }
-
-        matched.setStock(matched.getStock() + toAdd);
-        boolean activateOnStockAdd = bazaar.getConfig().getBoolean("settings.activate-on-stock-add", true);
-        if (activateOnStockAdd && (matched.isExpired() || matched.getExpiryTime() > 0)) {
-            matched.setExpiryTime(bazaar.calculateListingExpiryTime());
-        }
-
-        final Listing finalMatched = matched;
-        bazaar.getStorage().updateListing(finalMatched).whenComplete((v, ex) -> {
-            bazaar.releaseListingLock(finalMatched.getId());
-        });
-
-        restocked.merge(matched, toAdd, Integer::sum);
-        return toAdd;
-    }
-
     // -------------------------------------------------------------------------
-    // Core Order Delivery Algorithms
+    // Core Order Delivery Algorithms & Session
     // -------------------------------------------------------------------------
 
     public record DeliverySummary(Order order, int amount, double earnings) {}
 
-    private List<DeliverySummary> deliverFromInventory(
-            Player player,
+    private final class DeliverySession {
+        private final Player player;
+        private final List<Order> orders;
+        private final BasicBazaarPlugin bazaar;
+        private final MorePaperLib morePaperLib;
+        private final Map<UUID, Order> lockedOrders = new LinkedHashMap<>();
+        private final Set<UUID> failedOrders = new java.util.HashSet<>();
+        private final Map<Order, Integer> deliveredPerOrder = new LinkedHashMap<>();
+        private final Map<Order, Double> earningsPerOrder = new LinkedHashMap<>();
+
+        DeliverySession(Player player, List<Order> orders, BasicBazaarPlugin bazaar, MorePaperLib morePaperLib) {
+            this.player = player;
+            this.orders = orders;
+            this.bazaar = bazaar;
+            this.morePaperLib = morePaperLib;
+        }
+
+        public int deliverStack(ItemStack stack) {
+            if (isAirOrEmpty(stack) || isShopTool(stack)) return 0;
+            int totalDeliveredFromStack = 0;
+
+            for (Order order : orders) {
+                if (stack.getAmount() <= 0) break;
+                if (!order.canFulfill()) continue;
+
+                int alreadyDelivered = deliveredPerOrder.getOrDefault(order, 0);
+                int remaining = order.getRemainingAmount() - alreadyDelivered;
+                if (remaining <= 0) continue;
+
+                if (!OrderNormalizationUtil.matchesOrderDelivery(stack, order.getItem())) continue;
+
+                UUID id = order.getId();
+                if (failedOrders.contains(id)) continue;
+
+                if (!lockedOrders.containsKey(id)) {
+                    if (!bazaar.acquireOrderLock(id)) {
+                        failedOrders.add(id);
+                        continue;
+                    }
+                    lockedOrders.put(id, order);
+                }
+
+                int toDeliver = Math.min(stack.getAmount(), remaining);
+                if (toDeliver <= 0) continue;
+
+                double initialEarnings = toDeliver * order.getPrice();
+                BazaarOrderDeliverEvent deliverEvent = new BazaarOrderDeliverEvent(player, order, toDeliver, initialEarnings);
+                Bukkit.getPluginManager().callEvent(deliverEvent);
+                if (deliverEvent.isCancelled()) continue;
+
+                double finalEarnings = deliverEvent.getTotalEarnings();
+
+                deliveredPerOrder.merge(order, toDeliver, Integer::sum);
+                earningsPerOrder.merge(order, finalEarnings, Double::sum);
+
+                stack.setAmount(stack.getAmount() - toDeliver);
+                totalDeliveredFromStack += toDeliver;
+            }
+
+            return totalDeliveredFromStack;
+        }
+
+        public List<DeliverySummary> finish() {
+            List<DeliverySummary> summaries = new ArrayList<>();
+            long now = System.currentTimeMillis();
+
+            for (Map.Entry<UUID, Order> entry : lockedOrders.entrySet()) {
+                UUID id = entry.getKey();
+                Order order = entry.getValue();
+                int totalDelivered = deliveredPerOrder.getOrDefault(order, 0);
+                double totalEarnings = earningsPerOrder.getOrDefault(order, 0.0);
+
+                if (totalDelivered > 0) {
+                    summaries.add(new DeliverySummary(order, totalDelivered, totalEarnings));
+                    order.setFulfilledAmount(order.getFulfilledAmount() + totalDelivered);
+
+                    bazaar.getStorage().tryFulfillOrder(id, totalDelivered, now).whenComplete((updated, fulfillEx) -> {
+                        bazaar.releaseOrderLock(id);
+                        if (fulfillEx != null || updated == null) {
+                            morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+                                ItemStack refund = OrderNormalizationUtil.cleanItem(order.getItem()).clone();
+                                refund.setAmount(totalDelivered);
+                                var leftover = player.getInventory().addItem(refund);
+                                for (ItemStack drop : leftover.values()) {
+                                    player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                                }
+                            }, null);
+                            return;
+                        }
+
+                        morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
+                            bazaar.getEconomyManager().deposit(player.getUniqueId(), totalEarnings);
+
+                            BazaarOrderDeliveredEvent deliveredEvent = new BazaarOrderDeliveredEvent(player, order, totalDelivered, totalEarnings);
+                            Bukkit.getPluginManager().callEvent(deliveredEvent);
+
+                            bazaar.getNotificationManager().notifyBuyerOrderDelivery(order.getBuyer(), order, totalDelivered, totalEarnings, player.getName());
+
+                            ItemStack logItem = order.getItem().clone();
+                            logItem.setAmount(totalDelivered);
+                            bazaar.getTransactionLogger().logTransaction(
+                                    player.getUniqueId(), player.getName(),
+                                    "order_delivered", logItem,
+                                    order.getBuyer(), order.getBuyerName(),
+                                    totalEarnings
+                            );
+                        }, null);
+                    });
+                } else {
+                    bazaar.releaseOrderLock(id);
+                }
+            }
+
+            return summaries;
+        }
+    }
+
+    private void deliverInventory(
+            DeliverySession session,
             Inventory inv,
-            List<Order> orders,
             boolean recursive,
             int depth
     ) {
-        List<DeliverySummary> deliveries = new ArrayList<>();
+        if (inv == null) return;
         for (int i = 0; i < inv.getSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (isAirOrEmpty(stack) || isShopTool(stack)) continue;
 
             if (isContainerItem(stack)) {
                 if (recursive && depth <= 5) {
-                    boolean modified = deliverFromContainerItem(player, stack, orders, recursive, depth + 1, deliveries);
+                    boolean modified = deliverFromContainerItem(session, stack, recursive, depth + 1);
                     if (modified) {
                         inv.setItem(i, stack);
                     }
@@ -736,26 +967,51 @@ public final class BasicBazaarHook implements BazaarService {
                 continue;
             }
 
-            deliverSingleSlot(player, inv, i, stack, orders, deliveries);
+            deliverSingleSlot(session, inv, i, stack);
         }
-        return deliveries;
     }
 
-    private void deliverMatching(
-            Player player,
+    private void deliverMatchingSimilar(
+            DeliverySession session,
             Inventory inv,
-            Set<Material> materials,
-            List<Order> orders,
-            boolean recursive,
-            List<DeliverySummary> deliveries
+            ItemStack sample,
+            boolean recursive
     ) {
+        if (inv == null || sample == null || sample.isEmpty()) return;
         for (int i = 0; i < inv.getSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (isAirOrEmpty(stack) || isShopTool(stack)) continue;
 
             if (isContainerItem(stack)) {
                 if (recursive) {
-                    boolean modified = deliverFromContainerItem(player, stack, orders, true, 1, deliveries);
+                    boolean modified = deliverFromContainerItemSimilar(session, stack, sample, 1);
+                    if (modified) {
+                        inv.setItem(i, stack);
+                    }
+                }
+                continue;
+            }
+
+            if (stack.isSimilar(sample)) {
+                deliverSingleSlot(session, inv, i, stack);
+            }
+        }
+    }
+
+    private void deliverMatchingMaterials(
+            DeliverySession session,
+            Inventory inv,
+            Set<Material> materials,
+            boolean recursive
+    ) {
+        if (inv == null || materials == null || materials.isEmpty()) return;
+        for (int i = 0; i < inv.getSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (isAirOrEmpty(stack) || isShopTool(stack)) continue;
+
+            if (isContainerItem(stack)) {
+                if (recursive) {
+                    boolean modified = deliverFromContainerItem(session, stack, true, 1);
                     if (modified) {
                         inv.setItem(i, stack);
                     }
@@ -764,18 +1020,64 @@ public final class BasicBazaarHook implements BazaarService {
             }
 
             if (materials.contains(stack.getType())) {
-                deliverSingleSlot(player, inv, i, stack, orders, deliveries);
+                deliverSingleSlot(session, inv, i, stack);
             }
         }
     }
 
-    private boolean deliverFromContainerItem(
-            Player player,
+    private boolean deliverFromContainerItemSimilar(
+            DeliverySession session,
             ItemStack containerStack,
-            List<Order> orders,
+            ItemStack sample,
+            int depth
+    ) {
+        if (depth > 5 || !isContainerItem(containerStack)) return false;
+        ItemMeta meta = containerStack.getItemMeta();
+        if (!(meta instanceof BlockStateMeta bsm)) return false;
+        if (!(bsm.getBlockState() instanceof Container container)) return false;
+
+        Inventory inner = container.getInventory();
+        boolean anyModified = false;
+
+        for (int i = 0; i < inner.getSize(); i++) {
+            ItemStack innerStack = inner.getItem(i);
+            if (isAirOrEmpty(innerStack) || isShopTool(innerStack)) continue;
+
+            if (isContainerItem(innerStack)) {
+                boolean subModified = deliverFromContainerItemSimilar(session, innerStack, sample, depth + 1);
+                if (subModified) {
+                    inner.setItem(i, innerStack);
+                    anyModified = true;
+                }
+                continue;
+            }
+
+            if (innerStack.isSimilar(sample)) {
+                int delivered = session.deliverStack(innerStack);
+                if (delivered > 0) {
+                    anyModified = true;
+                    if (delivered >= innerStack.getAmount()) {
+                        inner.setItem(i, null);
+                    } else {
+                        innerStack.setAmount(innerStack.getAmount() - delivered);
+                        inner.setItem(i, innerStack);
+                    }
+                }
+            }
+        }
+
+        if (anyModified) {
+            bsm.setBlockState(container);
+            containerStack.setItemMeta(bsm);
+        }
+        return anyModified;
+    }
+
+    private boolean deliverFromContainerItem(
+            DeliverySession session,
+            ItemStack containerStack,
             boolean recursive,
-            int depth,
-            List<DeliverySummary> deliveries
+            int depth
     ) {
         if (depth > 5 || !isContainerItem(containerStack)) return false;
         ItemMeta meta = containerStack.getItemMeta();
@@ -791,7 +1093,7 @@ public final class BasicBazaarHook implements BazaarService {
 
             if (isContainerItem(innerStack)) {
                 if (recursive) {
-                    boolean subModified = deliverFromContainerItem(player, innerStack, orders, recursive, depth + 1, deliveries);
+                    boolean subModified = deliverFromContainerItem(session, innerStack, recursive, depth + 1);
                     if (subModified) {
                         inner.setItem(i, innerStack);
                         anyModified = true;
@@ -800,7 +1102,7 @@ public final class BasicBazaarHook implements BazaarService {
                 continue;
             }
 
-            int delivered = executeDeliveryOnStack(player, innerStack, orders, deliveries);
+            int delivered = session.deliverStack(innerStack);
             if (delivered > 0) {
                 anyModified = true;
                 if (delivered >= innerStack.getAmount()) {
@@ -820,14 +1122,12 @@ public final class BasicBazaarHook implements BazaarService {
     }
 
     private void deliverSingleSlot(
-            Player player,
+            DeliverySession session,
             Inventory inv,
             int slot,
-            ItemStack stack,
-            List<Order> orders,
-            List<DeliverySummary> deliveries
+            ItemStack stack
     ) {
-        int delivered = executeDeliveryOnStack(player, stack, orders, deliveries);
+        int delivered = session.deliverStack(stack);
         if (delivered > 0) {
             if (delivered >= stack.getAmount()) {
                 inv.setItem(slot, null);
@@ -839,12 +1139,11 @@ public final class BasicBazaarHook implements BazaarService {
     }
 
     private void deliverCursorStack(
+            DeliverySession session,
             Player player,
-            ItemStack cursorStack,
-            List<Order> orders,
-            List<DeliverySummary> deliveries
+            ItemStack cursorStack
     ) {
-        int delivered = executeDeliveryOnStack(player, cursorStack, orders, deliveries);
+        int delivered = session.deliverStack(cursorStack);
         if (delivered > 0) {
             if (delivered >= cursorStack.getAmount()) {
                 player.setItemOnCursor(null);
@@ -853,86 +1152,6 @@ public final class BasicBazaarHook implements BazaarService {
                 player.setItemOnCursor(cursorStack);
             }
         }
-    }
-
-    private int executeDeliveryOnStack(
-            Player player,
-            ItemStack stack,
-            List<Order> orders,
-            List<DeliverySummary> deliveries
-    ) {
-        if (isAirOrEmpty(stack) || isShopTool(stack)) return 0;
-        int totalDeliveredFromStack = 0;
-
-        for (Order order : orders) {
-            if (stack.getAmount() <= 0) break;
-            if (!order.canFulfill() || order.getRemainingAmount() <= 0) continue;
-            if (!OrderNormalizationUtil.matchesOrderDelivery(stack, order.getItem())) continue;
-
-            BasicBazaarPlugin bazaar = getBazaar();
-            if (!bazaar.acquireOrderLock(order.getId())) continue;
-
-            int deliverAmount = Math.min(stack.getAmount(), order.getRemainingAmount());
-            if (deliverAmount <= 0) {
-                bazaar.releaseOrderLock(order.getId());
-                continue;
-            }
-
-            double initialEarnings = deliverAmount * order.getPrice();
-            BazaarOrderDeliverEvent deliverEvent = new BazaarOrderDeliverEvent(player, order, deliverAmount, initialEarnings);
-            Bukkit.getPluginManager().callEvent(deliverEvent);
-            if (deliverEvent.isCancelled()) {
-                bazaar.releaseOrderLock(order.getId());
-                continue;
-            }
-
-            double finalEarnings = deliverEvent.getTotalEarnings();
-            long now = System.currentTimeMillis();
-
-            // Perform atomic fulfillment in storage
-            bazaar.getStorage().tryFulfillOrder(order.getId(), deliverAmount, now).whenComplete((updated, fulfillEx) -> {
-                bazaar.releaseOrderLock(order.getId());
-                if (fulfillEx != null || updated == null) {
-                    // Refund items to player if DB update fails unexpectedly
-                    morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
-                        ItemStack refund = OrderNormalizationUtil.cleanItem(order.getItem()).clone();
-                        refund.setAmount(deliverAmount);
-                        var leftover = player.getInventory().addItem(refund);
-                        for (ItemStack drop : leftover.values()) {
-                            player.getWorld().dropItemNaturally(player.getLocation(), drop);
-                        }
-                    }, null);
-                    return;
-                }
-
-                morePaperLib.scheduling().entitySpecificScheduler(player).run(() -> {
-                    bazaar.getEconomyManager().deposit(player.getUniqueId(), finalEarnings);
-
-                    BazaarOrderDeliveredEvent deliveredEvent = new BazaarOrderDeliveredEvent(player, order, deliverAmount, finalEarnings);
-                    Bukkit.getPluginManager().callEvent(deliveredEvent);
-
-                    bazaar.getNotificationManager().notifyBuyerOrderDelivery(order.getBuyer(), order, deliverAmount, finalEarnings, player.getName());
-
-                    ItemStack logItem = order.getItem().clone();
-                    logItem.setAmount(deliverAmount);
-                    bazaar.getTransactionLogger().logTransaction(
-                            player.getUniqueId(), player.getName(),
-                            "order_delivered", logItem,
-                            order.getBuyer(), order.getBuyerName(),
-                            finalEarnings
-                    );
-                }, null);
-            });
-
-            // Update in-memory order remaining amount so next items in this pass know the updated state
-            order.setFulfilledAmount(order.getFulfilledAmount() + deliverAmount);
-
-            totalDeliveredFromStack += deliverAmount;
-            stack.setAmount(stack.getAmount() - deliverAmount);
-            deliveries.add(new DeliverySummary(order, deliverAmount, finalEarnings));
-        }
-
-        return totalDeliveredFromStack;
     }
 
     // -------------------------------------------------------------------------
@@ -957,8 +1176,13 @@ public final class BasicBazaarHook implements BazaarService {
 
             if (useNativeMessages) {
                 bazaar.getMessageManager().getMessage("listing-stock-added").send(player,
+                        Placeholder.component("item", bazaar.getItemAsComponent(listing.getItem(), amount)),
                         Placeholder.parsed("amount", String.valueOf(amount)),
-                        Placeholder.parsed("stock", String.valueOf(listing.getStock())));
+                        Placeholder.parsed("stock", String.valueOf(listing.getStock())),
+                        Placeholder.parsed("price", bazaar.getMoneyFormatter().format(listing.getPrice())),
+                        Placeholder.parsed("unit_price", bazaar.getMoneyFormatter().format(listing.getPrice())),
+                        Placeholder.parsed("total", bazaar.getMoneyFormatter().format(listing.getPrice() * amount)),
+                        bazaar.getMiniMessageService().playerComponent("seller", player.getUniqueId(), player.getName()));
             } else {
                 Component itemComp = bazaar.getItemAsComponent(listing.getItem(), amount);
                 configManager.getMessagesConfig().send(player, "tool-bazaar-staff-restock-line",
@@ -991,7 +1215,10 @@ public final class BasicBazaarHook implements BazaarService {
                         Placeholder.component("item", bazaar.getItemAsComponent(order.getItem(), amount)),
                         Placeholder.parsed("amount", String.valueOf(amount)),
                         bazaar.getMiniMessageService().playerComponent("buyer", order.getBuyer(), order.getBuyerName()),
-                        Placeholder.parsed("price", bazaar.getMoneyFormatter().format(earnings)));
+                        Placeholder.parsed("price", bazaar.getMoneyFormatter().format(earnings)),
+                        Placeholder.parsed("total", bazaar.getMoneyFormatter().format(earnings)),
+                        Placeholder.parsed("unit_price", bazaar.getMoneyFormatter().format(order.getPrice())),
+                        bazaar.getMiniMessageService().playerComponent("seller", player.getUniqueId(), player.getName()));
             } else {
                 Component itemComp = bazaar.getItemAsComponent(order.getItem(), amount);
                 configManager.getMessagesConfig().send(player, "tool-bazaar-staff-deliver-line",

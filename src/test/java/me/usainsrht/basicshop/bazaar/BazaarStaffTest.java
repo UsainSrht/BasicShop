@@ -113,4 +113,20 @@ public class BazaarStaffTest {
         event.setCancelled(true);
         assertTrue(event.isCancelled());
     }
+
+    @Test
+    public void testBasicBazaarHookUnavailableNoOp() {
+        BasicBazaarHook hook = new BasicBazaarHook(
+                mock(me.usainsrht.basicshop.config.ConfigManager.class),
+                mock(me.usainsrht.basicshop.item.ShopToolFactory.class),
+                mock(space.arim.morepaperlib.MorePaperLib.class)
+        );
+        assertFalse(hook.isAvailable());
+
+        Player player = mock(Player.class);
+        Block block = mock(Block.class);
+        assertDoesNotThrow(() -> hook.handleContainerUse(player, block, false, false, true));
+        assertDoesNotThrow(() -> hook.handleStaffOnCursorClick(player, null, 0, ClickType.LEFT, null, false, null, false, false, true));
+        assertDoesNotThrow(() -> hook.handleItemOnStaffClick(player, null, 0, ClickType.LEFT, null, false, null, false, false, true));
+    }
 }

@@ -25,6 +25,8 @@ commands:
 # Shop tools — custom sell items given via /shop give
 tools:
   money_staff:
+    enabled: true
+    cursor-actions-enabled: true
     material: BLAZE_ROD
     name: "<gold>Money Staff"
     lore:
@@ -40,6 +42,7 @@ tools:
     usable-when-riding: false
     max_stack_size: 1
   money_hoe:
+    enabled: true
     material: GOLDEN_HOE
     name: "<gold>Money Hoe"
     lore:
@@ -56,6 +59,7 @@ tools:
     usable-when-riding: false
     max_stack_size: 1
   sorting_staff:
+    enabled: true
     material: AMETHYST_SHARD
     name: "<light_purple>Sorting Staff"
     lore:
@@ -67,6 +71,8 @@ tools:
     usable-when-riding: false
     max_stack_size: 1
   bazaar_staff:
+    enabled: true
+    cursor-actions-enabled: true
     material: BLAZE_ROD
     name: "<aqua>Bazaar Staff"
     lore:
