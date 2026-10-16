@@ -30,35 +30,51 @@ public final class ToolsConfig {
             double cursorCooldownSeconds,
             boolean useNativeBazaarMessages,
             boolean enabled,
-            boolean cursorActionsEnabled
+            boolean cursorActionsEnabled,
+            ToolRestrictions restrictions
     ) {
+        public ToolDefinition(
+                ItemStack itemStack,
+                boolean usableWhenRiding,
+                double cursorCooldownSeconds,
+                boolean useNativeBazaarMessages,
+                boolean enabled,
+                boolean cursorActionsEnabled
+        ) {
+            this(itemStack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages, enabled, cursorActionsEnabled, ToolRestrictions.defaultRestrictions());
+        }
+
         public ToolDefinition(
                 ItemStack itemStack,
                 boolean usableWhenRiding,
                 double cursorCooldownSeconds,
                 boolean useNativeBazaarMessages
         ) {
-            this(itemStack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages, true, true);
+            this(itemStack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages, true, true, ToolRestrictions.defaultRestrictions());
         }
 
         public ToolDefinition(ItemStack itemStack, boolean usableWhenRiding, double cursorCooldownSeconds) {
-            this(itemStack, usableWhenRiding, cursorCooldownSeconds, true, true, true);
+            this(itemStack, usableWhenRiding, cursorCooldownSeconds, true, true, true, ToolRestrictions.defaultRestrictions());
         }
 
         public ToolDefinition(ItemStack itemStack, boolean usableWhenRiding) {
-            this(itemStack, usableWhenRiding, 0.25, true, true, true);
+            this(itemStack, usableWhenRiding, 0.25, true, true, true, ToolRestrictions.defaultRestrictions());
         }
 
         public ToolDefinition(ItemStack itemStack) {
-            this(itemStack, false, 0.25, true, true, true);
+            this(itemStack, false, 0.25, true, true, true, ToolRestrictions.defaultRestrictions());
         }
     }
 
+    private final ToolRestrictions globalRestrictions;
     private final Map<ShopToolType, ToolDefinition> tools;
 
     public ToolsConfig(FileConfiguration cfg) {
         Map<ShopToolType, ToolDefinition> parsed = new EnumMap<>(ShopToolType.class);
         ConfigurationSection section = cfg != null ? cfg.getConfigurationSection("tools") : null;
+
+        ConfigurationSection globalRestrictionsSec = section != null ? section.getConfigurationSection("restrictions") : null;
+        this.globalRestrictions = ToolRestrictions.parse(globalRestrictionsSec, null);
 
         for (ShopToolType type : ShopToolType.values()) {
             ConfigurationSection sub = section != null ? section.getConfigurationSection(type.getId()) : null;
@@ -68,6 +84,7 @@ public final class ToolsConfig {
             boolean useNativeBazaarMessages = true;
             boolean enabled = true;
             boolean cursorActionsEnabled = true;
+            ToolRestrictions toolRestrictions = globalRestrictions;
             if (sub != null) {
                 try {
                     stack = YamlItem.parse(sub);
@@ -79,6 +96,10 @@ public final class ToolsConfig {
                 useNativeBazaarMessages = sub.getBoolean("use-native-bazaar-messages", true);
                 enabled = sub.getBoolean("enabled", true);
                 cursorActionsEnabled = sub.getBoolean("cursor-actions-enabled", sub.getBoolean("cursor-enabled", true));
+                ConfigurationSection toolResSec = sub.getConfigurationSection("restrictions");
+                if (toolResSec != null) {
+                    toolRestrictions = ToolRestrictions.parse(toolResSec, globalRestrictions);
+                }
             }
             if (stack == null || stack.getType().isAir()) {
                 try {
@@ -93,7 +114,7 @@ public final class ToolsConfig {
                 } catch (Throwable ignored) {}
             }
 
-            parsed.put(type, new ToolDefinition(stack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages, enabled, cursorActionsEnabled));
+            parsed.put(type, new ToolDefinition(stack, usableWhenRiding, cursorCooldownSeconds, useNativeBazaarMessages, enabled, cursorActionsEnabled, toolRestrictions));
         }
 
         this.tools = Collections.unmodifiableMap(parsed);
@@ -135,6 +156,15 @@ public final class ToolsConfig {
     public boolean isUseNativeBazaarMessages(ShopToolType type) {
         if (type == null) return true;
         return get(type).useNativeBazaarMessages();
+    }
+
+    public ToolRestrictions getGlobalRestrictions() {
+        return globalRestrictions;
+    }
+
+    public ToolRestrictions getRestrictions(ShopToolType type) {
+        if (type == null) return globalRestrictions != null ? globalRestrictions : ToolRestrictions.defaultRestrictions();
+        return get(type).restrictions();
     }
 
     public Map<ShopToolType, ToolDefinition> getAll() {

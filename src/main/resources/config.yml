@@ -24,6 +24,16 @@ commands:
 
 # Shop tools — custom sell items given via /shop give
 tools:
+  # Global world and WorldGuard region restrictions for shop tools.
+  # Can also be overridden per tool (e.g. tools.money_hoe.restrictions).
+  restrictions:
+    # Mode: BLACKLIST (disabled in listed worlds) or WHITELIST (only allowed in listed worlds)
+    world-mode: BLACKLIST
+    worlds: []
+    # Mode: BLACKLIST (disabled in listed regions) or WHITELIST (only allowed in listed regions)
+    region-mode: BLACKLIST
+    regions: []
+
   money_staff:
     enabled: true
     cursor-actions-enabled: true

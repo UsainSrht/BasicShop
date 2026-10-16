@@ -42,6 +42,8 @@ tool-bazaar-staff-restock-line: "<green>Restocked <white><amount>x <item></white
 tool-bazaar-staff-deliver-line: "<green>Delivered <white><amount>x <item></white> to <white><buyer></white> for <gold><price></gold> with Bazaar Staff."
 tool-bazaar-staff-no-items: "<yellow>No matching items or active listings found to restock."
 tool-bazaar-staff-no-orders: "<yellow>No matching active buy orders found for items."
+tool-disabled-world: "<red>Shop tools are disabled in this world."
+tool-disabled-region: "<red>Shop tools are disabled in this region."
 
 give-success: "<green>Gave <white><amount>x <tool></white> to <white><player></white>."
 give-player-not-found: "<red>That player is not online."

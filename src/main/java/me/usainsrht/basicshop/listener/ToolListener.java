@@ -107,7 +107,29 @@ public final class ToolListener implements Listener {
     private final ShopToolFactory toolFactory;
     private final MorePaperLib morePaperLib;
     private final me.usainsrht.basicshop.bazaar.BazaarService bazaarService;
+    private final me.usainsrht.basicshop.region.RegionService regionService;
     private final Map<UUID, Long> cursorCooldowns = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> messageCooldowns = new ConcurrentHashMap<>();
+
+    private enum RestrictionDenial {
+        WORLD,
+        REGION
+    }
+
+    public ToolListener(
+            ConfigManager configManager,
+            ShopAPI shopAPI,
+            ShopToolFactory toolFactory,
+            MorePaperLib morePaperLib,
+            me.usainsrht.basicshop.bazaar.BazaarService bazaarService,
+            me.usainsrht.basicshop.region.RegionService regionService) {
+        this.configManager = configManager;
+        this.shopAPI = shopAPI;
+        this.toolFactory = toolFactory;
+        this.morePaperLib = morePaperLib;
+        this.bazaarService = bazaarService != null ? bazaarService : new me.usainsrht.basicshop.bazaar.NoOpBazaarService();
+        this.regionService = regionService != null ? regionService : new me.usainsrht.basicshop.region.NoOpRegionService();
+    }
 
     public ToolListener(
             ConfigManager configManager,
@@ -115,11 +137,7 @@ public final class ToolListener implements Listener {
             ShopToolFactory toolFactory,
             MorePaperLib morePaperLib,
             me.usainsrht.basicshop.bazaar.BazaarService bazaarService) {
-        this.configManager = configManager;
-        this.shopAPI = shopAPI;
-        this.toolFactory = toolFactory;
-        this.morePaperLib = morePaperLib;
-        this.bazaarService = bazaarService != null ? bazaarService : new me.usainsrht.basicshop.bazaar.NoOpBazaarService();
+        this(configManager, shopAPI, toolFactory, morePaperLib, bazaarService, new me.usainsrht.basicshop.region.NoOpRegionService());
     }
 
     public ToolListener(
@@ -127,7 +145,7 @@ public final class ToolListener implements Listener {
             ShopAPI shopAPI,
             ShopToolFactory toolFactory,
             MorePaperLib morePaperLib) {
-        this(configManager, shopAPI, toolFactory, morePaperLib, new me.usainsrht.basicshop.bazaar.NoOpBazaarService());
+        this(configManager, shopAPI, toolFactory, morePaperLib, new me.usainsrht.basicshop.bazaar.NoOpBazaarService(), new me.usainsrht.basicshop.region.NoOpRegionService());
     }
 
     private boolean isToolEnabled(ShopToolType type) {
@@ -150,6 +168,55 @@ public final class ToolListener implements Listener {
         return toolsConfig != null && !toolsConfig.isUsableWhenRiding(type);
     }
 
+    private RestrictionDenial checkRestrictions(ShopToolType type, Location... locations) {
+        if (type == null) return null;
+        ToolsConfig toolsConfig = configManager.getToolsConfig();
+        if (toolsConfig == null) return null;
+        me.usainsrht.basicshop.config.ToolRestrictions restrictions = toolsConfig.getRestrictions(type);
+        if (restrictions == null) return null;
+
+        for (Location loc : locations) {
+            if (loc == null) continue;
+            if (loc.getWorld() != null && !restrictions.isWorldAllowed(loc.getWorld().getName())) {
+                return RestrictionDenial.WORLD;
+            }
+            if (regionService != null && regionService.isAvailable()) {
+                Set<String> activeRegions = regionService.getRegionNames(loc);
+                if (!restrictions.isRegionAllowed(activeRegions)) {
+                    return RestrictionDenial.REGION;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void sendRestrictionMessage(Player player, ShopToolType type, RestrictionDenial denial, Location location) {
+        if (player == null || denial == null) return;
+        long now = System.currentTimeMillis();
+        Long last = messageCooldowns.get(player.getUniqueId());
+        if (last != null && (now - last) < 1000) {
+            return;
+        }
+        messageCooldowns.put(player.getUniqueId(), now);
+
+        String key = denial == RestrictionDenial.WORLD ? "tool-disabled-world" : "tool-disabled-region";
+        String worldName = location != null && location.getWorld() != null ? location.getWorld().getName() : player.getWorld().getName();
+        String toolName = type != null ? type.getId() : "";
+
+        List<net.kyori.adventure.text.minimessage.tag.resolver.TagResolver> tags = new ArrayList<>();
+        tags.add(Placeholder.unparsed("world", worldName));
+        tags.add(Placeholder.unparsed("tool", toolName));
+
+        if (denial == RestrictionDenial.REGION && location != null && regionService != null && regionService.isAvailable()) {
+            Set<String> activeRegions = regionService.getRegionNames(location);
+            tags.add(Placeholder.unparsed("region", String.join(", ", activeRegions)));
+        } else {
+            tags.add(Placeholder.unparsed("region", ""));
+        }
+
+        configManager.getMessagesConfig().send(player, key, tags.toArray(new net.kyori.adventure.text.minimessage.tag.resolver.TagResolver[0]));
+    }
+
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onHoeBreakRestriction(BlockBreakEvent event) {
         Player player = event.getPlayer();
@@ -160,6 +227,12 @@ public final class ToolListener implements Listener {
             return;
         if (isRidingRestricted(player, ShopToolType.MONEY_HOE)) {
             event.setCancelled(true);
+            return;
+        }
+        RestrictionDenial denial = checkRestrictions(ShopToolType.MONEY_HOE, event.getBlock().getLocation(), player.getLocation());
+        if (denial != null) {
+            event.setCancelled(true);
+            sendRestrictionMessage(player, ShopToolType.MONEY_HOE, denial, event.getBlock().getLocation());
         }
     }
 
@@ -172,8 +245,18 @@ public final class ToolListener implements Listener {
         if (type == ShopToolType.MONEY_STAFF || type == ShopToolType.SORTING_STAFF || type == ShopToolType.BAZAAR_STAFF) {
             if (!isToolEnabled(type))
                 return;
-            if (isRidingRestricted(event.getPlayer(), type)) {
+            Player player = event.getPlayer();
+            if (isRidingRestricted(player, type)) {
                 event.setCancelled(true);
+                return;
+            }
+            Location blockLoc = event.hasBlock() && event.getClickedBlock() != null ? event.getClickedBlock().getLocation() : null;
+            RestrictionDenial denial = checkRestrictions(type, blockLoc, player.getLocation());
+            if (denial != null) {
+                event.setCancelled(true);
+                if (event.getHand() == EquipmentSlot.HAND) {
+                    sendRestrictionMessage(player, type, denial, blockLoc != null ? blockLoc : player.getLocation());
+                }
             }
         }
     }
@@ -213,14 +296,16 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
             return;
+        Block block = event.getClickedBlock();
+        if (block == null)
+            return;
+        RestrictionDenial denial = checkRestrictions(ShopToolType.MONEY_STAFF, block.getLocation(), player.getLocation());
+        if (denial != null)
+            return;
         if (!player.hasPermission("basicshop.tools.staff"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.MONEY_STAFF);
         if (player.getCooldown(ShopToolType.MONEY_STAFF.getCooldownKey()) > 0)
-            return;
-
-        Block block = event.getClickedBlock();
-        if (block == null)
             return;
 
         BlockState state = block.getState();
@@ -262,14 +347,16 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.SORTING_STAFF))
             return;
+        Block block = event.getClickedBlock();
+        if (block == null)
+            return;
+        RestrictionDenial denial = checkRestrictions(ShopToolType.SORTING_STAFF, block.getLocation(), player.getLocation());
+        if (denial != null)
+            return;
         if (!player.hasPermission("basicshop.tools.sorting_staff"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.SORTING_STAFF);
         if (player.getCooldown(ShopToolType.SORTING_STAFF.getCooldownKey()) > 0)
-            return;
-
-        Block block = event.getClickedBlock();
-        if (block == null)
             return;
 
         BlockState state = block.getState();
@@ -321,14 +408,16 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
             return;
+        Block block = event.getClickedBlock();
+        if (block == null)
+            return;
+        RestrictionDenial bDenial = checkRestrictions(ShopToolType.BAZAAR_STAFF, block.getLocation(), player.getLocation());
+        if (bDenial != null)
+            return;
         if (!player.hasPermission("basicshop.tools.bazaar_staff"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.BAZAAR_STAFF);
         if (player.getCooldown(ShopToolType.BAZAAR_STAFF.getCooldownKey()) > 0)
-            return;
-
-        Block block = event.getClickedBlock();
-        if (block == null)
             return;
 
         BlockState state = block.getState();
@@ -403,6 +492,11 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
             return;
+        RestrictionDenial denial = checkRestrictions(ShopToolType.MONEY_STAFF, player.getLocation());
+        if (denial != null) {
+            sendRestrictionMessage(player, ShopToolType.MONEY_STAFF, denial, player.getLocation());
+            return;
+        }
         if (!player.hasPermission("basicshop.tools.staff"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.MONEY_STAFF);
@@ -454,6 +548,11 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
             return;
+        RestrictionDenial bDenial = checkRestrictions(ShopToolType.BAZAAR_STAFF, player.getLocation());
+        if (bDenial != null) {
+            sendRestrictionMessage(player, ShopToolType.BAZAAR_STAFF, bDenial, player.getLocation());
+            return;
+        }
         if (!player.hasPermission("basicshop.tools.bazaar_staff"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.BAZAAR_STAFF);
@@ -524,6 +623,11 @@ public final class ToolListener implements Listener {
         Player player = event.getPlayer();
         if (isRidingRestricted(player, ShopToolType.MONEY_HOE))
             return;
+        RestrictionDenial hoeDenial = checkRestrictions(ShopToolType.MONEY_HOE, player.getLocation());
+        if (hoeDenial != null) {
+            sendRestrictionMessage(player, ShopToolType.MONEY_HOE, hoeDenial, player.getLocation());
+            return;
+        }
         if (!player.hasPermission("basicshop.tools.hoe"))
             return;
         toolFactory.ensureUseCooldown(item, ShopToolType.MONEY_HOE);
@@ -560,6 +664,11 @@ public final class ToolListener implements Listener {
             return;
 
         Block block = event.getBlock();
+        RestrictionDenial denial = checkRestrictions(ShopToolType.MONEY_HOE, block.getLocation(), player.getLocation());
+        if (denial != null) {
+            event.setCancelled(true);
+            return;
+        }
         if (!MONEY_HOE_CROPS.contains(block.getType()))
             return;
         if (!isFullyGrown(block)) {
@@ -763,6 +872,12 @@ public final class ToolListener implements Listener {
         if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
             return;
 
+        RestrictionDenial denial = checkRestrictions(ShopToolType.MONEY_STAFF, player.getLocation());
+        if (denial != null) {
+            sendRestrictionMessage(player, ShopToolType.MONEY_STAFF, denial, player.getLocation());
+            return;
+        }
+
         if (!player.hasPermission("basicshop.tools.staff")) {
             configManager.getMessagesConfig().send(player, "no-permission");
             return;
@@ -814,6 +929,12 @@ public final class ToolListener implements Listener {
 
         if (isRidingRestricted(player, ShopToolType.MONEY_STAFF))
             return;
+
+        RestrictionDenial denial = checkRestrictions(ShopToolType.MONEY_STAFF, player.getLocation());
+        if (denial != null) {
+            sendRestrictionMessage(player, ShopToolType.MONEY_STAFF, denial, player.getLocation());
+            return;
+        }
 
         if (!player.hasPermission("basicshop.tools.staff")) {
             configManager.getMessagesConfig().send(player, "no-permission");
@@ -1077,6 +1198,12 @@ public final class ToolListener implements Listener {
         if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
             return;
 
+        RestrictionDenial denial = checkRestrictions(ShopToolType.BAZAAR_STAFF, player.getLocation());
+        if (denial != null) {
+            sendRestrictionMessage(player, ShopToolType.BAZAAR_STAFF, denial, player.getLocation());
+            return;
+        }
+
         if (!player.hasPermission("basicshop.tools.bazaar_staff")) {
             configManager.getMessagesConfig().send(player, "no-permission");
             return;
@@ -1133,6 +1260,12 @@ public final class ToolListener implements Listener {
         if (isRidingRestricted(player, ShopToolType.BAZAAR_STAFF))
             return;
 
+        RestrictionDenial denial = checkRestrictions(ShopToolType.BAZAAR_STAFF, player.getLocation());
+        if (denial != null) {
+            sendRestrictionMessage(player, ShopToolType.BAZAAR_STAFF, denial, player.getLocation());
+            return;
+        }
+
         if (!player.hasPermission("basicshop.tools.bazaar_staff")) {
             configManager.getMessagesConfig().send(player, "no-permission");
             return;
@@ -1175,5 +1308,6 @@ public final class ToolListener implements Listener {
     @EventHandler
     public void onPlayerQuit(org.bukkit.event.player.PlayerQuitEvent event) {
         cursorCooldowns.remove(event.getPlayer().getUniqueId());
+        messageCooldowns.remove(event.getPlayer().getUniqueId());
     }
 }

@@ -47,6 +47,7 @@ public final class BasicShop extends JavaPlugin {
     private me.usainsrht.basicshop.analytics.AnalyticsWebUploader webUploader;
     private me.usainsrht.basicshop.hook.HookManager hookManager;
     private me.usainsrht.basicshop.bazaar.BazaarService bazaarService;
+    private me.usainsrht.basicshop.region.RegionService regionService;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -104,10 +105,23 @@ public final class BasicShop extends JavaPlugin {
             bazaarService = new me.usainsrht.basicshop.bazaar.NoOpBazaarService();
         }
 
+        // 5.8 WorldGuard Integration (Soft Dependency)
+        if (getServer().getPluginManager().isPluginEnabled("WorldGuard")) {
+            try {
+                regionService = new me.usainsrht.basicshop.region.WorldGuardHook();
+                getLogger().info("Successfully hooked into WorldGuard for region-based shop tool restrictions.");
+            } catch (Throwable t) {
+                getLogger().log(Level.WARNING, "Failed to initialize WorldGuard integration", t);
+                regionService = new me.usainsrht.basicshop.region.NoOpRegionService();
+            }
+        } else {
+            regionService = new me.usainsrht.basicshop.region.NoOpRegionService();
+        }
+
         // 6. Listeners
         getServer().getPluginManager().registerEvents(new GuiListener(), this);
         getServer().getPluginManager().registerEvents(
-                new ToolListener(configManager, shopAPI, toolFactory, morePaperLib, bazaarService),
+                new ToolListener(configManager, shopAPI, toolFactory, morePaperLib, bazaarService, regionService),
                 this
         );
 
@@ -185,6 +199,10 @@ public final class BasicShop extends JavaPlugin {
 
     public me.usainsrht.basicshop.bazaar.BazaarService getBazaarService() {
         return bazaarService;
+    }
+
+    public me.usainsrht.basicshop.region.RegionService getRegionService() {
+        return regionService;
     }
 }
 

@@ -4,6 +4,7 @@ import me.usainsrht.basicshop.api.model.ShopToolType;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -127,5 +128,42 @@ public class ToolsConfigTest {
 
         assertFalse(reloaded.isEnabled(ShopToolType.MONEY_STAFF));
         assertFalse(reloaded.isCursorActionsEnabled(ShopToolType.MONEY_STAFF));
+    }
+
+    @Test
+    public void testGlobalAndPerToolRestrictions() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("tools.restrictions.world-mode", "BLACKLIST");
+        config.set("tools.restrictions.worlds", java.util.List.of("world_nether"));
+        config.set("tools.restrictions.region-mode", "BLACKLIST");
+        config.set("tools.restrictions.regions", java.util.List.of("spawn"));
+
+        // Override money_hoe to have its own region restrictions
+        config.set("tools.money_hoe.restrictions.region-mode", "WHITELIST");
+        config.set("tools.money_hoe.restrictions.regions", java.util.List.of("farm_area"));
+
+        ToolsConfig toolsConfig = new ToolsConfig(config);
+
+        // Global restrictions
+        ToolRestrictions global = toolsConfig.getGlobalRestrictions();
+        assertEquals(FilterMode.BLACKLIST, global.worldMode());
+        assertTrue(global.worlds().contains("world_nether"));
+        assertEquals(FilterMode.BLACKLIST, global.regionMode());
+        assertTrue(global.regions().contains("spawn"));
+
+        // Money Staff inherits global
+        ToolRestrictions staffRes = toolsConfig.getRestrictions(ShopToolType.MONEY_STAFF);
+        assertEquals(FilterMode.BLACKLIST, staffRes.worldMode());
+        assertTrue(staffRes.worlds().contains("world_nether"));
+        assertEquals(FilterMode.BLACKLIST, staffRes.regionMode());
+        assertTrue(staffRes.regions().contains("spawn"));
+
+        // Money Hoe overrides regions, inherits worlds
+        ToolRestrictions hoeRes = toolsConfig.getRestrictions(ShopToolType.MONEY_HOE);
+        assertEquals(FilterMode.BLACKLIST, hoeRes.worldMode());
+        assertTrue(hoeRes.worlds().contains("world_nether"));
+        assertEquals(FilterMode.WHITELIST, hoeRes.regionMode());
+        assertTrue(hoeRes.regions().contains("farm_area"));
+        assertFalse(hoeRes.regions().contains("spawn"));
     }
 }

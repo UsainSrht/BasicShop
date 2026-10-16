@@ -6,7 +6,7 @@
 
     <groupId>me.usainsrht.basicshop</groupId>
     <artifactId>BasicShop</artifactId>
-    <version>1.3.3</version>
+    <version>1.3.4</version>
     <packaging>jar</packaging>
 
     <name>BasicShop</name>
@@ -43,6 +43,11 @@
             <id>placeholderapi</id>
             <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
         </repository>
+        <!-- EngineHub repository (WorldGuard) -->
+        <repository>
+            <id>enginehub-repo</id>
+            <url>https://maven.enginehub.org/repo/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -66,13 +71,13 @@
         <dependency>
             <groupId>me.usainsrht.itemapi</groupId>
             <artifactId>yamlitem</artifactId>
-            <version>1.0.10</version>
+            <version>1.0.13</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>me.usainsrht.itemapi</groupId>
             <artifactId>itemtext</artifactId>
-            <version>1.0.10</version>
+            <version>1.0.13</version>
             <scope>compile</scope>
         </dependency>
 
@@ -122,6 +127,20 @@
             <artifactId>BasicBazaar</artifactId>
             <version>1.0.1</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- WorldGuard — Soft Dependency -->
+        <dependency>
+            <groupId>com.sk89q.worldguard</groupId>
+            <artifactId>worldguard-bukkit</artifactId>
+            <version>7.0.9-SNAPSHOT</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.bukkit</groupId>
+                    <artifactId>bukkit</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Testing -->
