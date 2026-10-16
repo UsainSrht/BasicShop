@@ -159,6 +159,7 @@
     </dependencies>
 
     <build>
+        <defaultGoal>clean package</defaultGoal>
         <finalName>${project.name}-${project.version}</finalName>
         <plugins>
             <!-- Compiler -->
@@ -239,6 +240,14 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>
+                    <outputDirectory>${env.PLUGINS_DIR}</outputDirectory>
+                </configuration>
             </plugin>
         </plugins>
 

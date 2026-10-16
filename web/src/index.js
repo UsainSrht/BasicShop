@@ -593,6 +593,153 @@ function renderDashboardHtml(initialId, origin) {
     .rank-2 { background: rgba(148, 163, 184, 0.2); color: #e2e8f0; border: 1px solid rgba(148, 163, 184, 0.4); }
     .rank-3 { background: rgba(180, 83, 9, 0.2); color: #d97706; border: 1px solid rgba(180, 83, 9, 0.4); }
 
+    /* Sortable Table Headers */
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+    }
+    th.sortable:hover {
+      color: #fff;
+      background: rgba(99, 102, 241, 0.08);
+      border-radius: 6px;
+    }
+    th.sortable .sort-indicator {
+      display: inline-block;
+      margin-left: 0.35rem;
+      font-size: 0.65rem;
+      vertical-align: middle;
+      opacity: 0.4;
+      transition: opacity 0.15s ease, color 0.15s ease;
+    }
+    th.sortable.active {
+      color: #818cf8;
+    }
+    th.sortable.active .sort-indicator {
+      opacity: 1;
+      color: var(--primary);
+    }
+
+    /* Searchable Player Picker Combobox */
+    .player-combobox {
+      position: relative;
+      display: inline-block;
+    }
+    .player-combobox-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.35rem 0.65rem;
+      color: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 170px;
+      max-width: 240px;
+    }
+    .player-combobox-trigger:hover, .player-combobox.open .player-combobox-trigger {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.12);
+    }
+    .player-combobox-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 290px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-accent);
+      border-radius: 12px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+      z-index: 100;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .player-combobox.open .player-combobox-panel {
+      display: flex;
+    }
+    .player-combobox-search-wrap {
+      padding: 0.6rem;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(17, 24, 39, 0.95);
+    }
+    .player-combobox-search {
+      width: 100%;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 0.4rem 0.65rem;
+      color: #fff;
+      font-size: 0.82rem;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .player-combobox-search:focus {
+      border-color: var(--primary);
+    }
+    .player-combobox-list {
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 0.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .player-combobox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      font-size: 0.83rem;
+      color: var(--text-main);
+    }
+    .player-combobox-item:hover {
+      background: rgba(99, 102, 241, 0.15);
+      color: #fff;
+    }
+    .player-combobox-item.selected {
+      background: rgba(99, 102, 241, 0.25);
+      border: 1px solid var(--border-accent);
+    }
+    .player-combobox-item-info {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+      overflow: hidden;
+    }
+    .player-combobox-item-name {
+      font-weight: 600;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    .player-combobox-item-meta {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+    .btn-quick-filter {
+      padding: 0.2rem 0.55rem;
+      font-size: 0.72rem;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.12);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-weight: 600;
+    }
+    .btn-quick-filter:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+
     /* Pixelated image rendering for Minecraft assets */
     .pixelated {
       image-rendering: pixelated;
@@ -940,12 +1087,24 @@ function renderDashboardHtml(initialId, origin) {
           <button class="tab-btn" data-tab="tabLogs">Recent Transactions</button>
         </div>
         <div class="filter-bar">
-          <!-- Item Tab Player Filter -->
+          <!-- Item Tab Player Filter (Searchable Picker) -->
           <div id="playerFilterContainer" style="display: flex; align-items: center; gap: 0.4rem;">
-            <select id="itemPlayerFilter" class="filter-select">
-              <option value="">All Players</option>
-            </select>
-            <button id="btnResetItemPlayerFilter" class="btn btn-sm" style="display: none;">Reset</button>
+            <div class="player-combobox" id="playerCombobox">
+              <button type="button" class="player-combobox-trigger" id="playerComboboxTrigger" aria-haspopup="listbox" aria-expanded="false">
+                <span id="playerComboboxTriggerAvatar" style="display: inline-flex; align-items: center;">👥</span>
+                <span id="playerComboboxTriggerLabel" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">All Players</span>
+                <span style="margin-left: auto; font-size: 0.65rem; color: var(--text-dim);">▼</span>
+              </button>
+              <div class="player-combobox-panel" id="playerComboboxPanel">
+                <div class="player-combobox-search-wrap">
+                  <input type="text" class="player-combobox-search" id="playerComboboxSearch" placeholder="Type player name to search..." autocomplete="off" />
+                </div>
+                <div class="player-combobox-list" id="playerComboboxList" role="listbox">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+            </div>
+            <button id="btnResetItemPlayerFilter" class="btn btn-sm" style="display: none;" title="Clear player filter">✕ Reset</button>
           </div>
 
           <!-- Trader Tab Item Filter -->
@@ -966,14 +1125,14 @@ function renderDashboardHtml(initialId, origin) {
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Item</th>
-                <th>Category</th>
-                <th>Units Sold</th>
-                <th>Payout Total</th>
-                <th>Units Bought</th>
-                <th>Purchase Cost</th>
-                <th>Total Volume</th>
+                <th class="sortable" onclick="handleItemSort('rank')"># <span class="sort-indicator" id="sort-items-rank">↕</span></th>
+                <th class="sortable" onclick="handleItemSort('item')">Item <span class="sort-indicator" id="sort-items-item">↕</span></th>
+                <th class="sortable" onclick="handleItemSort('category')">Category <span class="sort-indicator" id="sort-items-category">↕</span></th>
+                <th class="sortable" onclick="handleItemSort('soldUnits')">Units Sold <span class="sort-indicator" id="sort-items-soldUnits">↕</span></th>
+                <th class="sortable" onclick="handleItemSort('soldMoney')">Payout Total <span class="sort-indicator" id="sort-items-soldMoney">↕</span></th>
+                <th class="sortable" onclick="handleItemSort('boughtUnits')">Units Bought <span class="sort-indicator" id="sort-items-boughtUnits">↕</span></th>
+                <th class="sortable" onclick="handleItemSort('boughtMoney')">Purchase Cost <span class="sort-indicator" id="sort-items-boughtMoney">↕</span></th>
+                <th class="sortable" onclick="handleItemSort('total')">Total Volume <span class="sort-indicator" id="sort-items-total">↕</span></th>
               </tr>
             </thead>
             <tbody id="itemsTableBody"></tbody>
@@ -987,12 +1146,13 @@ function renderDashboardHtml(initialId, origin) {
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Player</th>
-                <th>Transactions</th>
-                <th>Total Spent</th>
-                <th>Total Earned</th>
-                <th>Net Balance Delta</th>
+                <th class="sortable" onclick="handlePlayerSort('rank')"># <span class="sort-indicator" id="sort-players-rank">↕</span></th>
+                <th class="sortable" onclick="handlePlayerSort('player')">Player <span class="sort-indicator" id="sort-players-player">↕</span></th>
+                <th class="sortable" onclick="handlePlayerSort('transactions')">Transactions <span class="sort-indicator" id="sort-players-transactions">↕</span></th>
+                <th class="sortable" onclick="handlePlayerSort('spent')">Total Spent <span class="sort-indicator" id="sort-players-spent">↕</span></th>
+                <th class="sortable" onclick="handlePlayerSort('earned')">Total Earned <span class="sort-indicator" id="sort-players-earned">↕</span></th>
+                <th class="sortable" onclick="handlePlayerSort('net')">Net Balance Delta <span class="sort-indicator" id="sort-players-net">↕</span></th>
+                <th style="text-align: center;">Actions</th>
               </tr>
             </thead>
             <tbody id="playersTableBody"></tbody>
@@ -1122,8 +1282,10 @@ function renderDashboardHtml(initialId, origin) {
             <div class="modal-title" id="playerModalTitle">Player Details</div>
             <div class="modal-subtitle" id="playerModalSubtitle">UUID</div>
           </div>
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <button class="btn btn-sm" id="btnPlayerModalFilterItems" onclick="filterItemsFromPlayerModal()" style="font-size:0.75rem; padding:0.35rem 0.75rem;">Filter Items by this Player</button>
+          <button class="modal-close-btn" onclick="closePlayerModal()">&times;</button>
         </div>
-        <button class="modal-close-btn" onclick="closePlayerModal()">&times;</button>
       </div>
       <div class="modal-body">
         <div class="kpi-grid" style="margin-bottom: 1.5rem;">
@@ -1220,10 +1382,92 @@ function renderDashboardHtml(initialId, origin) {
     let itemModalChartInstance = null;
     let playerModalTimelineChartInstance = null;
     let playerModalCategoryChartInstance = null;
+    let itemsSortCol = "total";
+    let itemsSortDir = "desc";
+    let playersSortCol = "transactions";
+    let playersSortDir = "desc";
+    let currentPlayerModalObject = null;
     const initialReportId = "${initialId}";
 
     function formatMoney(n) {
       return "$" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Curated high-resolution official asset mappings for blocks and skulls
+    const KNOWN_ITEM_TEXTURES = {
+      // Skulls & Heads (3D rendered isometric head cube)
+      wither_skeleton_skull: "https://crafthead.net/cube/MHF_WSkeleton/32",
+      skeleton_skull: "https://crafthead.net/cube/MHF_Skeleton/32",
+      zombie_head: "https://crafthead.net/cube/MHF_Zombie/32",
+      creeper_head: "https://crafthead.net/cube/MHF_Creeper/32",
+      piglin_head: "https://crafthead.net/cube/MHF_Piglin/32",
+      player_head: "https://crafthead.net/cube/Steve/32",
+      dragon_head: "https://crafthead.net/cube/MHF_EnderDragon/32",
+
+      // Blocks with _side, _front, or _top suffixes in textures/block/
+      pumpkin: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/pumpkin_side.png",
+      cactus: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/cactus_side.png",
+      basalt: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/basalt_side.png",
+      polished_basalt: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/polished_basalt_side.png",
+      ancient_debris: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/ancient_debris_side.png",
+      melon: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/melon_side.png",
+      hay_block: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/hay_block_side.png",
+      tnt: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/tnt_side.png",
+      crafting_table: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/crafting_table_front.png",
+      furnace: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/furnace_front.png",
+      blast_furnace: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/blast_furnace_front.png",
+      smoker: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/smoker_front.png",
+      dispenser: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/dispenser_front.png",
+      dropper: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/dropper_front.png",
+      observer: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/observer_front.png",
+      barrel: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/barrel_side.png",
+      loom: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/loom_side.png",
+      cartography_table: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/cartography_table_top.png",
+      smithing_table: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/smithing_table_front.png",
+      fletching_table: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/fletching_table_front.png",
+      lectern: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/lectern_top.png",
+      target: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/target_side.png",
+      beehive: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/beehive_front.png",
+      bee_nest: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/bee_nest_side.png",
+      respawn_anchor: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/respawn_anchor_top.png",
+      mycelium: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/mycelium_side.png",
+      podzol: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/podzol_side.png",
+      grass_block: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/grass_block_side.png",
+      dirt_path: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/dirt_path_side.png",
+      bone_block: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/bone_block_side.png",
+      chiseled_bookshelf: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/chiseled_bookshelf_side.png",
+      ochre_froglight: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/ochre_froglight_side.png",
+      pearlescent_froglight: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/pearlescent_froglight_side.png",
+      verdant_froglight: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/verdant_froglight_side.png",
+      lodestone: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/lodestone_side.png",
+      sculk_sensor: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/sculk_sensor_side.png",
+      sculk_catalyst: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/sculk_catalyst_side.png",
+      sculk_shrieker: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/sculk_shrieker_side.png",
+      composter: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/composter_side.png",
+      stonecutter: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/stonecutter_side.png",
+      grindstone: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/grindstone_side.png",
+      enchanting_table: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/enchanting_table_side.png",
+      bell: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/bell_side.png",
+      cauldron: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/cauldron_side.png",
+      hopper: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/hopper_top.png",
+      crafter: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/crafter_top.png",
+      vault: "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/vault_top.png",
+    };
+
+    function getItemInitialUrl(raw) {
+      if (KNOWN_ITEM_TEXTURES[raw]) {
+        return KNOWN_ITEM_TEXTURES[raw];
+      }
+      if (raw.endsWith("_skull") || raw.endsWith("_head")) {
+        if (raw.includes("wither")) return "https://crafthead.net/cube/MHF_WSkeleton/32";
+        if (raw.includes("skeleton")) return "https://crafthead.net/cube/MHF_Skeleton/32";
+        if (raw.includes("zombie")) return "https://crafthead.net/cube/MHF_Zombie/32";
+        if (raw.includes("creeper")) return "https://crafthead.net/cube/MHF_Creeper/32";
+        if (raw.includes("piglin")) return "https://crafthead.net/cube/MHF_Piglin/32";
+        if (raw.includes("dragon")) return "https://crafthead.net/cube/MHF_EnderDragon/32";
+        return "https://crafthead.net/cube/Steve/32";
+      }
+      return "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/" + raw + ".png";
     }
 
     // Minecraft Item Image Helpers
@@ -1248,7 +1492,7 @@ function renderDashboardHtml(initialId, origin) {
     function getItemImgHtml(itemId, size = 28) {
       const raw = getItemRawName(itemId);
       const title = formatItemDisplayName(itemId);
-      const initialSrc = "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/" + raw + ".png";
+      const initialSrc = getItemInitialUrl(raw);
       return '<div class="item-img-wrap" style="width:' + (size + 6) + 'px; height:' + (size + 6) + 'px;">' +
         '<img class="item-img pixelated" ' +
         'src="' + initialSrc + '" ' +
@@ -1266,15 +1510,24 @@ function renderDashboardHtml(initialId, origin) {
     window.handleItemImgError = function(img) {
       const raw = img.dataset.rawName || "chest";
       const step = parseInt(img.dataset.step || "0", 10);
+      img.dataset.step = String(step + 1);
+
       if (step === 0) {
-        img.dataset.step = "1";
         img.src = "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/" + raw + ".png";
       } else if (step === 1) {
-        img.dataset.step = "2";
-        img.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.21.1/assets/minecraft/textures/item/" + raw + ".png";
+        img.src = "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/" + raw + "_side.png";
       } else if (step === 2) {
-        img.dataset.step = "3";
+        img.src = "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/" + raw + "_front.png";
+      } else if (step === 3) {
+        img.src = "https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/block/" + raw + "_top.png";
+      } else if (step === 4) {
+        img.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.21.1/assets/minecraft/textures/item/" + raw + ".png";
+      } else if (step === 5) {
         img.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.21.1/assets/minecraft/textures/block/" + raw + ".png";
+      } else if (step === 6) {
+        img.src = "https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.21.1/assets/minecraft/textures/block/" + raw + "_side.png";
+      } else if (step === 7 && (raw.includes("skull") || raw.includes("head"))) {
+        img.src = "https://mc-heads.net/head/MHF_WSkeleton/32";
       } else {
         img.onerror = null;
         img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e293b' stroke='%23334155' stroke-width='2'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='%23818cf8' font-family='sans-serif' font-weight='bold' font-size='14'%3E%3F%3C/text%3E%3C/svg%3E";
@@ -1368,29 +1621,15 @@ function renderDashboardHtml(initialId, origin) {
       populateFilters(data);
 
       // Render Tables
+      updateSortIndicators();
       renderItemsTable();
       renderPlayersTable();
       renderLogsTable(data.recentTransactions || []);
     }
 
     function populateFilters(data) {
-      // 1. Player filter dropdown for Items tab
-      const pSelect = document.getElementById("itemPlayerFilter");
-      pSelect.innerHTML = '<option value="">All Players</option>' +
-        (data.players || []).map(p => '<option value="' + (p.uuid || p.name) + '">' + p.name + '</option>').join('');
-
-      pSelect.addEventListener("change", (e) => {
-        selectedItemPlayer = e.target.value;
-        document.getElementById("btnResetItemPlayerFilter").style.display = selectedItemPlayer ? "inline-flex" : "none";
-        renderItemsTable();
-      });
-
-      document.getElementById("btnResetItemPlayerFilter").addEventListener("click", () => {
-        pSelect.value = "";
-        selectedItemPlayer = "";
-        document.getElementById("btnResetItemPlayerFilter").style.display = "none";
-        renderItemsTable();
-      });
+      // 1. Searchable Player Combobox Picker for Items tab
+      setupPlayerCombobox(data);
 
       // 2. Item filter dropdown for Traders tab
       const iSelect = document.getElementById("traderItemFilter");
@@ -1411,6 +1650,152 @@ function renderDashboardHtml(initialId, origin) {
         renderPlayersTable();
       });
     }
+
+    function setupPlayerCombobox(data) {
+      const combobox = document.getElementById("playerCombobox");
+      const trigger = document.getElementById("playerComboboxTrigger");
+      const searchInput = document.getElementById("playerComboboxSearch");
+      const listContainer = document.getElementById("playerComboboxList");
+      const resetBtn = document.getElementById("btnResetItemPlayerFilter");
+      const label = document.getElementById("playerComboboxTriggerLabel");
+      const avatarSpan = document.getElementById("playerComboboxTriggerAvatar");
+
+      if (!combobox || !trigger) return;
+      const players = data.players || [];
+
+      function renderList(query = "") {
+        const q = query.trim().toLowerCase();
+        let filtered = players;
+        if (q) {
+          filtered = players.filter(p => (p.name && p.name.toLowerCase().includes(q)) || (p.uuid && p.uuid.toLowerCase().includes(q)));
+        }
+
+        let html = '<div class="player-combobox-item ' + (!selectedItemPlayer ? 'selected' : '') + '" data-player-id="" data-player-name="All Players">' +
+          '<span style="font-size:1.05rem; width:22px; text-align:center;">👥</span>' +
+          '<div class="player-combobox-item-info">' +
+          '<span class="player-combobox-item-name">All Players</span>' +
+          '<span class="player-combobox-item-meta">Show all transactions</span>' +
+          '</div></div>';
+
+        if (filtered.length === 0) {
+          html += '<div style="padding:0.75rem; color:var(--text-dim); text-align:center; font-size:0.8rem;">No matching players found</div>';
+        } else {
+          html += filtered.map(p => {
+            const isSelected = selectedItemPlayer === p.uuid || selectedItemPlayer === p.name;
+            const av = getPlayerAvatarHtml(p.uuid, p.name, 22);
+            const totalVol = (p.spent || 0) + (p.earned || 0);
+            return '<div class="player-combobox-item ' + (isSelected ? 'selected' : '') + '" data-player-id="' + (p.uuid || p.name) + '" data-player-name="' + p.name + '">' +
+              av +
+              '<div class="player-combobox-item-info">' +
+              '<span class="player-combobox-item-name">' + p.name + '</span>' +
+              '<span class="player-combobox-item-meta">' + (p.transactions || 0) + ' trades • ' + formatMoney(totalVol) + '</span>' +
+              '</div></div>';
+          }).join('');
+        }
+
+        listContainer.innerHTML = html;
+
+        listContainer.querySelectorAll(".player-combobox-item").forEach(item => {
+          item.addEventListener("click", () => {
+            const id = item.dataset.playerId || "";
+            selectPlayer(id);
+            closeCombobox();
+          });
+        });
+      }
+
+      function openCombobox() {
+        combobox.classList.add("open");
+        trigger.setAttribute("aria-expanded", "true");
+        searchInput.value = "";
+        renderList("");
+        setTimeout(() => searchInput.focus(), 60);
+      }
+
+      function closeCombobox() {
+        combobox.classList.remove("open");
+        trigger.setAttribute("aria-expanded", "false");
+      }
+
+      trigger.onclick = function(e) {
+        e.stopPropagation();
+        if (combobox.classList.contains("open")) {
+          closeCombobox();
+        } else {
+          openCombobox();
+        }
+      };
+
+      searchInput.oninput = function(e) {
+        renderList(e.target.value);
+      };
+
+      searchInput.onkeydown = function(e) {
+        if (e.key === "Escape") {
+          closeCombobox();
+        } else if (e.key === "Enter") {
+          const first = listContainer.querySelector(".player-combobox-item");
+          if (first) {
+            selectPlayer(first.dataset.playerId || "");
+            closeCombobox();
+          }
+        }
+      };
+
+      document.addEventListener("click", (e) => {
+        if (!combobox.contains(e.target)) {
+          closeCombobox();
+        }
+      });
+
+      window.selectPlayer = function(playerId) {
+        selectedItemPlayer = playerId;
+        if (!playerId) {
+          label.textContent = "All Players";
+          avatarSpan.innerHTML = "👥";
+          resetBtn.style.display = "none";
+        } else {
+          const p = players.find(x => x.uuid === playerId || x.name === playerId);
+          const name = p ? p.name : playerId;
+          label.textContent = name;
+          avatarSpan.innerHTML = getPlayerAvatarHtml(p ? p.uuid : "", name, 18);
+          resetBtn.style.display = "inline-flex";
+        }
+        renderItemsTable();
+      };
+
+      resetBtn.onclick = function() {
+        selectPlayer("");
+      };
+    }
+
+    window.selectPlayerAndSwitchToItems = function(playerId) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+      const itemsTabBtn = document.querySelector('.tab-btn[data-tab="tabItems"]');
+      if (itemsTabBtn) itemsTabBtn.classList.add("active");
+      const tabItems = document.getElementById("tabItems");
+      if (tabItems) tabItems.style.display = "block";
+
+      document.getElementById("playerFilterContainer").style.display = "flex";
+      document.getElementById("itemFilterContainer").style.display = "none";
+
+      if (window.selectPlayer) {
+        window.selectPlayer(playerId);
+      } else {
+        selectedItemPlayer = playerId;
+        renderItemsTable();
+      }
+      tabItems.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    window.filterItemsFromPlayerModal = function() {
+      const p = currentPlayerModalObject;
+      closePlayerModal();
+      if (p) {
+        selectPlayerAndSwitchToItems(p.uuid || p.name);
+      }
+    };
 
     function renderTimelineChart(timeline) {
       const ctx = document.getElementById("timelineChart").getContext("2d");
@@ -1543,6 +1928,60 @@ function renderDashboardHtml(initialId, origin) {
       });
     }
 
+    window.handleItemSort = function(col) {
+      if (itemsSortCol === col) {
+        itemsSortDir = itemsSortDir === "asc" ? "desc" : "asc";
+      } else {
+        itemsSortCol = col;
+        itemsSortDir = (col === "category" || col === "item") ? "asc" : "desc";
+      }
+      updateSortIndicators();
+      renderItemsTable();
+    };
+
+    window.handlePlayerSort = function(col) {
+      if (playersSortCol === col) {
+        playersSortDir = playersSortDir === "asc" ? "desc" : "asc";
+      } else {
+        playersSortCol = col;
+        playersSortDir = col === "player" ? "asc" : "desc";
+      }
+      updateSortIndicators();
+      renderPlayersTable();
+    };
+
+    function updateSortIndicators() {
+      const itemCols = ['rank', 'item', 'category', 'soldUnits', 'soldMoney', 'boughtUnits', 'boughtMoney', 'total'];
+      itemCols.forEach(c => {
+        const el = document.getElementById('sort-items-' + c);
+        const th = el ? el.closest('th') : null;
+        if (el && th) {
+          if (itemsSortCol === c) {
+            th.classList.add('active');
+            el.textContent = itemsSortDir === 'asc' ? '▲' : '▼';
+          } else {
+            th.classList.remove('active');
+            el.textContent = '↕';
+          }
+        }
+      });
+
+      const playerCols = ['rank', 'player', 'transactions', 'spent', 'earned', 'net'];
+      playerCols.forEach(c => {
+        const el = document.getElementById('sort-players-' + c);
+        const th = el ? el.closest('th') : null;
+        if (el && th) {
+          if (playersSortCol === c) {
+            th.classList.add('active');
+            el.textContent = playersSortDir === 'asc' ? '▲' : '▼';
+          } else {
+            th.classList.remove('active');
+            el.textContent = '↕';
+          }
+        }
+      });
+    }
+
     function renderItemsTable() {
       if (!reportData) return;
       const allItems = reportData.items || reportData.topItems || [];
@@ -1567,8 +2006,45 @@ function renderDashboardHtml(initialId, origin) {
           });
         }
       } else {
-        displayList = allItems;
+        displayList = [...allItems];
       }
+
+      // Apply sorting based on itemsSortCol & itemsSortDir
+      displayList.sort((a, b) => {
+        if (itemsSortCol === "category") {
+          const catA = (a.categoryId || "-").toLowerCase();
+          const catB = (b.categoryId || "-").toLowerCase();
+          const cmp = catA.localeCompare(catB);
+          return itemsSortDir === "asc" ? cmp : -cmp;
+        } else if (itemsSortCol === "item") {
+          const nameA = formatItemDisplayName(a.itemId).toLowerCase();
+          const nameB = formatItemDisplayName(b.itemId).toLowerCase();
+          const cmp = nameA.localeCompare(nameB);
+          return itemsSortDir === "asc" ? cmp : -cmp;
+        } else if (itemsSortCol === "soldUnits") {
+          const diff = (a.soldUnits || 0) - (b.soldUnits || 0);
+          return itemsSortDir === "asc" ? diff : -diff;
+        } else if (itemsSortCol === "soldMoney") {
+          const diff = (a.soldMoney || 0) - (b.soldMoney || 0);
+          return itemsSortDir === "asc" ? diff : -diff;
+        } else if (itemsSortCol === "boughtUnits") {
+          const diff = (a.boughtUnits || 0) - (b.boughtUnits || 0);
+          return itemsSortDir === "asc" ? diff : -diff;
+        } else if (itemsSortCol === "boughtMoney") {
+          const diff = (a.boughtMoney || 0) - (b.boughtMoney || 0);
+          return itemsSortDir === "asc" ? diff : -diff;
+        } else if (itemsSortCol === "total") {
+          const totA = (a.soldMoney || 0) + (a.boughtMoney || 0);
+          const totB = (b.soldMoney || 0) + (b.boughtMoney || 0);
+          const diff = totA - totB;
+          return itemsSortDir === "asc" ? diff : -diff;
+        } else { // rank or default
+          const totA = (a.soldMoney || 0) + (a.boughtMoney || 0);
+          const totB = (b.soldMoney || 0) + (b.boughtMoney || 0);
+          const diff = totA - totB;
+          return itemsSortDir === "asc" ? -diff : diff;
+        }
+      });
 
       if (displayList.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">No items found.</td></tr>';
@@ -1614,11 +2090,38 @@ function renderDashboardHtml(initialId, origin) {
           }));
         }
       } else {
-        displayList = allPlayers;
+        displayList = [...allPlayers];
       }
 
+      // Apply sorting based on playersSortCol & playersSortDir
+      displayList.sort((a, b) => {
+        if (playersSortCol === "player") {
+          const nameA = (a.name || "").toLowerCase();
+          const nameB = (b.name || "").toLowerCase();
+          const cmp = nameA.localeCompare(nameB);
+          return playersSortDir === "asc" ? cmp : -cmp;
+        } else if (playersSortCol === "transactions") {
+          const diff = (a.transactions || 0) - (b.transactions || 0);
+          return playersSortDir === "asc" ? diff : -diff;
+        } else if (playersSortCol === "spent") {
+          const diff = (a.spent || 0) - (b.spent || 0);
+          return playersSortDir === "asc" ? diff : -diff;
+        } else if (playersSortCol === "earned") {
+          const diff = (a.earned || 0) - (b.earned || 0);
+          return playersSortDir === "asc" ? diff : -diff;
+        } else if (playersSortCol === "net") {
+          const netA = (a.earned || 0) - (a.spent || 0);
+          const netB = (b.earned || 0) - (b.spent || 0);
+          const diff = netA - netB;
+          return playersSortDir === "asc" ? diff : -diff;
+        } else { // rank or default
+          const diff = (a.transactions || 0) - (b.transactions || 0);
+          return playersSortDir === "asc" ? -diff : diff;
+        }
+      });
+
       if (displayList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">No traders found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No traders found.</td></tr>';
         return;
       }
 
@@ -1636,6 +2139,7 @@ function renderDashboardHtml(initialId, origin) {
           '<td style="color:var(--accent-amber);">' + formatMoney(p.spent) + '</td>' +
           '<td style="color:var(--accent-emerald);">' + formatMoney(p.earned) + '</td>' +
           '<td style="font-weight:600; color:' + netColor + ';">' + (net >= 0 ? '+' : '') + formatMoney(net) + '</td>' +
+          '<td style="text-align:center;"><button class="btn-quick-filter" onclick="event.stopPropagation(); selectPlayerAndSwitchToItems(\\'' + (p.uuid || p.name) + '\\')">Filter Items</button></td>' +
           '</tr>';
       }).join('');
     }
@@ -1670,8 +2174,7 @@ function renderDashboardHtml(initialId, origin) {
       const title = formatItemDisplayName(itemId);
 
       // Icon & Header
-      document.getElementById("itemModalIcon").innerHTML =
-        '<img class="pixelated" src="https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/' + raw + '.png" alt="" width="40" height="40" data-raw-name="' + raw + '" data-step="0" onerror="handleItemImgError(this)" />';
+      document.getElementById("itemModalIcon").innerHTML = getItemImgHtml(itemId, 40);
       document.getElementById("itemModalTitle").textContent = title;
       document.getElementById("itemModalSubtitle").textContent = itemId + ' • Category: ' + (item.categoryId || "general");
 
@@ -1786,6 +2289,7 @@ function renderDashboardHtml(initialId, origin) {
       const allPlayers = reportData.players || [];
       const player = allPlayers.find(p => p.uuid === playerUuidOrName || p.name === playerUuidOrName);
       if (!player) return;
+      currentPlayerModalObject = player;
 
       // Icon & Header
       document.getElementById("playerModalIcon").innerHTML = getPlayerAvatarHtml(player.uuid, player.name, 40);
